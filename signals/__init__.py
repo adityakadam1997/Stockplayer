@@ -1,1 +1,1 @@
-"""Signal generation -- stub, built in Weekend 2."""
+"""Signal generation: session VWAP, deviation bands, and market condition classification."""

@@ -10,6 +10,11 @@ data:
   request_sleep_seconds: 0.35 # sleep between requests to respect rate limits
   max_retries: 5              # retries on HTTP 429 with exponential backoff
 
+signals:
+  deviation_bands: [1, 2]     # which std-dev multiples to compute
+  acceptance_candles: 3       # consecutive candles required for "accepted"
+  value_area_band: 1          # which band defines the value area boundary
+
 watchlist:
   - RELIANCE
   - HDFCBANK
