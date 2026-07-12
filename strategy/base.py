@@ -46,6 +46,10 @@ class TradeProposal:
     notes: str = ""
 
 
+ATR_PERIOD = 20
+ATR_COLUMN = f"atr{ATR_PERIOD}"
+
+
 @dataclass
 class StrategyConfig:
     min_rr: float = 1.5
@@ -57,6 +61,26 @@ class StrategyConfig:
     session_open_no_entry_minutes: int = 15
     no_entry_after: time = time(14, 45)
     square_off_at: time = time(15, 15)
+
+    # Weekend 4: stop floor -- the stop can never be tighter than
+    # max(stop_floor_pct * entry_price, atr_mult * ATR20). Structural stops
+    # from the setups only ever get pushed further away, never tighter.
+    stop_floor_pct: float = 0.0035
+    atr_mult: float = 1.0
+
+    # Weekend 4: skip a proposal if its estimated full round-trip cost (fees +
+    # both-sides slippage, at the position size the floored stop implies)
+    # exceeds this fraction of the nominal rupee risk on the trade.
+    cost_viability_max_pct: float = 0.15
+    # Mirrors backtest:capital/risk_pct -- needed here only to size the
+    # cost-viability estimate at proposal time, before the simulator exists.
+    capital: float = 100_000.0
+    risk_pct: float = 0.005
+
+    # Weekend 4: frequency discipline, enforced by backtest.simulator (it's
+    # the only layer that knows which proposals actually got taken).
+    max_trades_per_day: int = 2
+    stop_cooldown_minutes: int = 30
 
 
 def _parse_time(value: str | time) -> time:
@@ -70,6 +94,7 @@ def load_strategy_config(config_path: Path) -> StrategyConfig:
     with config_path.open() as f:
         raw = yaml.safe_load(f)
     strategy_raw = raw.get("strategy", {})
+    backtest_raw = raw.get("backtest", {})
     defaults = StrategyConfig()
     return StrategyConfig(
         min_rr=strategy_raw.get("min_rr", defaults.min_rr),
@@ -87,7 +112,42 @@ def load_strategy_config(config_path: Path) -> StrategyConfig:
         ),
         no_entry_after=_parse_time(strategy_raw.get("no_entry_after", defaults.no_entry_after)),
         square_off_at=_parse_time(strategy_raw.get("square_off_at", defaults.square_off_at)),
+        stop_floor_pct=strategy_raw.get("stop_floor_pct", defaults.stop_floor_pct),
+        atr_mult=strategy_raw.get("atr_mult", defaults.atr_mult),
+        cost_viability_max_pct=strategy_raw.get("cost_viability_max_pct", defaults.cost_viability_max_pct),
+        capital=backtest_raw.get("capital", defaults.capital),
+        risk_pct=backtest_raw.get("risk_pct", defaults.risk_pct),
+        max_trades_per_day=strategy_raw.get("max_trades_per_day", defaults.max_trades_per_day),
+        stop_cooldown_minutes=strategy_raw.get("stop_cooldown_minutes", defaults.stop_cooldown_minutes),
     )
+
+
+def compute_atr(df: pd.DataFrame, period: int = ATR_PERIOD) -> pd.DataFrame:
+    """Add an ``atr{period}`` column: a session-aware, no-lookahead average
+    true range.
+
+    True range resets at each session boundary -- the first candle of a
+    session has no same-session prior close to reference, so its TR is just
+    high-low (matching how ``signals.vwap`` treats a session's first candle).
+    The rolling average is a backward-looking window over the *current and
+    up to period-1 preceding* candles within the same session (never crosses
+    a session boundary, never reaches into the future) -- so ``atr{period}``
+    at row T is a pure function of rows <= T. See
+    ``tests/test_strategy.py::test_atr_no_lookahead``.
+    """
+    df = df.copy()
+    day = df["timestamp"].dt.date
+    prev_close = df.groupby(day, sort=False)["close"].shift(1)
+
+    high_low = df["high"] - df["low"]
+    high_prev_close = (df["high"] - prev_close).abs()
+    low_prev_close = (df["low"] - prev_close).abs()
+    true_range = pd.concat([high_low, high_prev_close, low_prev_close], axis=1).max(axis=1)
+
+    df[f"atr{period}"] = true_range.groupby(day, sort=False).transform(
+        lambda s: s.rolling(window=period, min_periods=1).mean()
+    )
+    return df
 
 
 def compute_rr(entry_price: float, stop_price: float, target_price: float, direction: str) -> float:

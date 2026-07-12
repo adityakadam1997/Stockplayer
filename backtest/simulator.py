@@ -1,7 +1,8 @@
 """Replays a symbol's candles against its ``strategy.engine`` proposals,
 applying position sizing, fill/cost mechanics, and the position-management
 rules that live above any single setup (one open trade per symbol, forced
-square-off, setup 2's early band-break exit).
+square-off, setup 2's early band-break exit, Weekend 4's daily trade cap and
+post-stop-out cooldown).
 
 Entries are only considered on a candle where the symbol started the candle
 flat -- a stop/target/square-off exit resolved *during* a candle never opens
@@ -9,6 +10,10 @@ a fresh position on that same candle. The one exception is setup 2's
 band-break rule, which resolves at the *next* candle's open (see below); a
 fresh entry signal from that same candle's close is fine since the exit has
 already happened before the close is evaluated.
+
+The daily trade cap and stop-out cooldown live here (not in strategy.engine)
+because they depend on which proposals actually got *taken* and how they
+were *resolved* -- the engine only knows about candidate signals, not fills.
 """
 
 from __future__ import annotations
@@ -148,7 +153,7 @@ def run_symbol(
 ) -> list[TradeRecord]:
     """``df`` must already carry the signals columns required by
     ``strategy.engine.generate_proposals``, sorted ascending by timestamp."""
-    proposals = engine.generate_proposals(df, symbol, strategy_cfg)
+    proposals = engine.generate_proposals(df, symbol, strategy_cfg, cost_cfg)
     proposals_by_ts: dict[pd.Timestamp, list[TradeProposal]] = {}
     for p in proposals:
         proposals_by_ts.setdefault(p.timestamp, []).append(p)
@@ -156,14 +161,26 @@ def run_symbol(
     trades: list[TradeRecord] = []
     position: dict | None = None
     pending_exit_reason: str | None = None
+    current_day = None
+    trades_today = 0
+    cooldown_until: pd.Timestamp | None = None
 
     rows = list(df.itertuples())
     for row in rows:
         ts = row.timestamp
         flat_for_entry = position is None
 
+        day = ts.date()
+        if day != current_day:
+            current_day = day
+            trades_today = 0
+            cooldown_until = None
+
         if pending_exit_reason is not None and position is not None:
-            trades.append(_close_position(position, ts, row.open, pending_exit_reason, cost_cfg))
+            trade = _close_position(position, ts, row.open, pending_exit_reason, cost_cfg)
+            trades.append(trade)
+            if trade.exit_reason == "stop":
+                cooldown_until = ts + pd.Timedelta(minutes=strategy_cfg.stop_cooldown_minutes)
             position = None
             pending_exit_reason = None
             flat_for_entry = True
@@ -192,16 +209,25 @@ def run_symbol(
                         hit_target = row.low <= proposal.target_price
 
                     if hit_stop:
-                        trades.append(_close_position(position, ts, proposal.stop_price, "stop", cost_cfg))
+                        trade = _close_position(position, ts, proposal.stop_price, "stop", cost_cfg)
+                        trades.append(trade)
+                        cooldown_until = ts + pd.Timedelta(minutes=strategy_cfg.stop_cooldown_minutes)
                         position = None
                     elif hit_target:
                         trades.append(_close_position(position, ts, proposal.target_price, "target", cost_cfg))
                         position = None
 
-        if flat_for_entry and position is None:
+        can_enter = (
+            flat_for_entry
+            and position is None
+            and trades_today < strategy_cfg.max_trades_per_day
+            and (cooldown_until is None or ts >= cooldown_until)
+        )
+        if can_enter:
             for candidate in proposals_by_ts.get(ts, []):
                 position = _open_position(candidate, row, sim_cfg, cost_cfg)
                 if position is not None:
+                    trades_today += 1
                     break
 
     if position is not None:

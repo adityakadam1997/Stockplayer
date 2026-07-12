@@ -164,9 +164,43 @@ def print_report(report: Report) -> None:
         print(pd.DataFrame(rows).to_string(index=False))
 
 
-def save_report(report: Report, out_dir: Path) -> None:
+def compute_candle_range_diagnostics(symbol_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Diagnostic only -- no effect on any trading decision. Average/median
+    5-min candle range as a percentage of price, per symbol, so stop sizes
+    can always be compared against the market's own intra-candle noise floor
+    (this is what motivated Weekend 4's stop floor: Weekend 3's stops
+    averaged ~0.11-0.13% of price, inside single-candle noise)."""
+    rows = []
+    for symbol, df in symbol_data.items():
+        range_pct = (df["high"] - df["low"]) / df["close"] * 100
+        rows.append(
+            {
+                "symbol": symbol,
+                "avg_candle_range_pct": range_pct.mean(),
+                "median_candle_range_pct": range_pct.median(),
+            }
+        )
+    return pd.DataFrame(rows, columns=["symbol", "avg_candle_range_pct", "median_candle_range_pct"]).sort_values(
+        "symbol"
+    ).reset_index(drop=True)
+
+
+def print_candle_range_diagnostics(diagnostics: pd.DataFrame) -> None:
+    print("\n=== CANDLE RANGE DIAGNOSTIC (5-min, % of price) ===")
+    if diagnostics.empty:
+        print("(no data)")
+        return
+    formatted = diagnostics.copy()
+    formatted["avg_candle_range_pct"] = formatted["avg_candle_range_pct"].map("{:.4f}%".format)
+    formatted["median_candle_range_pct"] = formatted["median_candle_range_pct"].map("{:.4f}%".format)
+    print(formatted.to_string(index=False))
+
+
+def save_report(report: Report, out_dir: Path, candle_range_diagnostics: pd.DataFrame | None = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     report.trades_df.to_csv(out_dir / "trades.csv", index=False)
+    if candle_range_diagnostics is not None:
+        candle_range_diagnostics.to_csv(out_dir / "candle_range_diagnostics.csv", index=False)
 
     summary_rows = [{"breakdown": "overall", "key": "overall", **report.overall}]
     summary_rows += [
