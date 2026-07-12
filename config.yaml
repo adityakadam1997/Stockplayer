@@ -15,6 +15,31 @@ signals:
   acceptance_candles: 3       # consecutive candles required for "accepted"
   value_area_band: 1          # which band defines the value area boundary
 
+strategy:
+  min_rr: 1.5                       # every trade must clear this reward:risk at entry or it is skipped
+  stop_buffer_pct: 0.0005           # stop placed this fraction beyond the reference wick/band (0.05%)
+  setup2_min_vwap_crossings: 2      # balance/rotation filter: vwap crossings so far this session
+  setup3_allow_fallback: false      # also take the aggressive break-back-inside entry, flagged separately
+  setup4_vwap_touch_tolerance_pct: 0.0005   # how close to vwap counts as a "touch" (0.05%)
+  wide_band_guard_pct: 0.015        # suppress setups 2 & 4 when band_upper_1-band_lower_1 exceeds this fraction of price
+  session_open_no_entry_minutes: 15 # no entries in the first N minutes of the session (09:15-09:30)
+  no_entry_after: "14:45"           # no new entries after this IST time
+  square_off_at: "15:15"            # force-close all open positions at this IST time
+
+costs:
+  brokerage_per_order: 20.0   # flat ₹ per executed order (entry + exit = 2 orders)
+  stt_sell_pct: 0.00025       # STT on intraday equity, sell side only
+  txn_charge_pct: 0.00005     # exchange txn charges + SEBI fees + stamp duty, bundled, per side
+  gst_pct: 0.18                # GST on (brokerage + transaction charges)
+  slippage_ticks: 1            # tick-based slippage component
+  tick_size: 0.05
+  slippage_pct: 0.0002         # percentage-based slippage component; effective slippage = max(ticks*tick_size, price*pct)
+  stop_slippage_pct: 0.0005    # stop-loss fills specifically slip this much worse (fast markets)
+
+backtest:
+  capital: 100000.0     # starting capital per the sizing formula
+  risk_pct: 0.005        # fraction of capital risked per trade
+
 watchlist:
   - RELIANCE
   - HDFCBANK
