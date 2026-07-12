@@ -6,7 +6,7 @@ data:
   lookback_months: 12         # fetch as much as the API allows, target 12+
   cache_dir: cache/
   instrument_exchange: NSE_EQ # Upstox segment for watchlist symbols
-  request_chunk_days: 30      # days per historical API request (paged backwards)
+  request_chunk_days: 28      # days per historical API request (paged backwards); Upstox V3 rejects windows wider than ~28 days for minute candles with UDAPI1148 "Invalid date range"
   request_sleep_seconds: 0.35 # sleep between requests to respect rate limits
   max_retries: 5              # retries on HTTP 429 with exponential backoff
 
