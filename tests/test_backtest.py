@@ -1,4 +1,12 @@
-"""Unit tests for backtest/ -- no network access, no cache/ dependency."""
+"""Unit tests for backtest/ -- no network access, no cache/ dependency.
+
+Most tests below exercise pre-Weekend-4 simulator mechanics (unchanged this
+weekend) and use ``_permissive_cfg()`` to switch off the Weekend 4 stop floor
+and cost-viability filter, which would otherwise dominate every stop/rr
+number in these hand-picked, tight-stop scenarios. The Weekend 4 frequency
+rules (daily trade cap, stop-out cooldown) get their own dedicated tests
+further down.
+"""
 
 from __future__ import annotations
 
@@ -15,8 +23,16 @@ from signals.condition import ACCEPTED_ABOVE, INSIDE_VALUE
 from strategy.base import LONG, SHORT, StrategyConfig
 
 
-def _frame(date, times, opens, highs, lows, closes, vwaps, band_upper, band_lower, conditions, streaks):
+def _permissive_cfg(**overrides) -> StrategyConfig:
+    defaults = dict(stop_floor_pct=0.0, atr_mult=0.0, cost_viability_max_pct=float("inf"))
+    defaults.update(overrides)
+    return StrategyConfig(**defaults)
+
+
+def _frame(date, times, opens, highs, lows, closes, vwaps, band_upper, band_lower, conditions, streaks, atr=0.0):
     ts = pd.to_datetime([f"{date} {t}" for t in times]).tz_localize("Asia/Kolkata")
+    n = len(times)
+    atr_values = atr if isinstance(atr, list) else [atr] * n
     return pd.DataFrame(
         {
             "timestamp": ts,
@@ -29,6 +45,7 @@ def _frame(date, times, opens, highs, lows, closes, vwaps, band_upper, band_lowe
             "band_lower_1": band_lower,
             "condition": conditions,
             "acceptance_streak": streaks,
+            "atr20": atr_values,
         }
     )
 
@@ -99,7 +116,7 @@ def test_stop_fills_first_when_candle_touches_both_stop_and_target():
     # reached during acceptance (116) -> comfortably clears the R:R filter.
     # row4 (09:35): range [103, 113] touches the stop (103.948) but not the
     # target (116 is NOT touched here on purpose).
-    strategy_cfg = StrategyConfig()
+    strategy_cfg = _permissive_cfg()
     cost_cfg = costs.CostConfig()
     sim_cfg = simulator.SimulatorConfig()
 
@@ -128,7 +145,7 @@ def test_stop_wins_over_target_when_both_touched_same_candle():
     )
     # target = extreme high during acceptance = 112.5 (row2's high); row4's
     # range [103, 113] touches BOTH the stop (103.948) and the target (112.5).
-    strategy_cfg = StrategyConfig()
+    strategy_cfg = _permissive_cfg()
     cost_cfg = costs.CostConfig()
     sim_cfg = simulator.SimulatorConfig()
 
@@ -164,7 +181,7 @@ def test_forced_square_off_at_1515():
     # the 15:15 candle's range [106, 108] never touches the stop (103.948) or
     # the target either, so the position can only be closed by the forced
     # square-off rule.
-    strategy_cfg = StrategyConfig()
+    strategy_cfg = _permissive_cfg()
     cost_cfg = costs.CostConfig()
     sim_cfg = simulator.SimulatorConfig()
 
@@ -200,7 +217,7 @@ def test_setup2_exits_at_next_open_on_close_beyond_band():
     # row4 (09:35): closes at 100.75, beyond the faded band (100.7), without
     # touching the stop -- this should flag an exit at row5's open, not wait
     # for the stop.
-    strategy_cfg = StrategyConfig()
+    strategy_cfg = _permissive_cfg()
     cost_cfg = costs.CostConfig()
     sim_cfg = simulator.SimulatorConfig()
 
@@ -211,3 +228,123 @@ def test_setup2_exits_at_next_open_on_close_beyond_band():
     assert trade.exit_reason == "setup2_band_break"
     assert trade.exit_signal_price == pytest.approx(100.85)  # row5's open
     assert trade.exit_timestamp == df.loc[5, "timestamp"]
+
+
+# ---------------------------------------------------------------------------
+# Weekend 4 -- daily trade cap
+# ---------------------------------------------------------------------------
+
+
+def _two_signals_same_day_frame():
+    """A trading day with two independent, valid setup1 retest signals against
+    a flat band (105/95) and a fixed target (the extreme high reached during
+    the single acceptance phase at row1, 112): row3 retests and fills its
+    target at row4; row6 is a fresh retest of the same band (still eligible --
+    ``had_acceptance_above`` is sticky for the rest of the session) and fills
+    its target at row7. Rows 2 and 5 are deliberately non-touching fillers so
+    they never fire a signal of their own. Both entries clear the R:R filter
+    (risk~2.05, reward=6, rr~2.9)."""
+    return _frame(
+        "2026-01-05",
+        ["09:15", "09:20", "09:25", "09:30", "09:35", "09:40", "09:45", "09:50"],
+        opens=[100, 108, 108, 106, 106, 110, 106, 106],
+        highs=[101, 112, 110, 106, 113, 110, 106, 113],
+        lows=[99, 107, 108, 104, 105, 108, 104, 105],
+        closes=[100, 108, 109, 106, 110, 109, 106, 110],
+        vwaps=[100] * 8,
+        band_upper=[105] * 8,
+        band_lower=[95] * 8,
+        conditions=[INSIDE_VALUE, ACCEPTED_ABOVE] + [INSIDE_VALUE] * 6,
+        streaks=[0, 3, 0, 0, 0, 0, 0, 0],
+    )
+
+
+def test_daily_trade_cap_blocks_a_second_entry():
+    df = _two_signals_same_day_frame()
+    strategy_cfg = _permissive_cfg(max_trades_per_day=1)
+    cost_cfg = costs.CostConfig()
+    sim_cfg = simulator.SimulatorConfig()
+
+    trades = simulator.run_symbol("TEST", df, strategy_cfg, cost_cfg, sim_cfg)
+    assert len(trades) == 1
+    assert trades[0].entry_timestamp == df.loc[3, "timestamp"]
+
+
+def test_daily_trade_cap_allows_second_entry_when_raised():
+    df = _two_signals_same_day_frame()
+    strategy_cfg = _permissive_cfg(max_trades_per_day=2)
+    cost_cfg = costs.CostConfig()
+    sim_cfg = simulator.SimulatorConfig()
+
+    trades = simulator.run_symbol("TEST", df, strategy_cfg, cost_cfg, sim_cfg)
+    assert len(trades) == 2
+    assert [t.entry_timestamp for t in trades] == [df.loc[3, "timestamp"], df.loc[6, "timestamp"]]
+
+
+# ---------------------------------------------------------------------------
+# Weekend 4 -- stop-out cooldown
+# ---------------------------------------------------------------------------
+
+
+def test_cooldown_blocks_reentry_within_window_then_allows_after():
+    df = _frame(
+        "2026-01-05",
+        ["09:15", "09:20", "09:25", "09:30", "09:35", "09:40", "09:45", "10:05", "10:10"],
+        opens=[100, 108, 108, 106, 106, 106, 106, 106, 106],
+        highs=[101, 112, 110, 106, 107, 106, 110, 106, 113],
+        lows=[99, 107, 108, 104, 103, 104, 108, 104, 105],
+        closes=[100, 108, 109, 106, 105, 106, 109, 106, 110],
+        vwaps=[100] * 9,
+        band_upper=[105] * 9,
+        band_lower=[95] * 9,
+        conditions=[INSIDE_VALUE, ACCEPTED_ABOVE] + [INSIDE_VALUE] * 7,
+        streaks=[0, 3, 0, 0, 0, 0, 0, 0, 0],
+    )
+    # row3 (09:30): setup1 retest entry, entry=106, stop=104*(1-0.0005)=103.948,
+    # target=extreme high during the row1 acceptance phase=112.
+    # row4 (09:35): low=103 hits the stop -> exit at 09:35, cooldown until 10:05
+    # (stop_cooldown_minutes=30).
+    # row5 (09:40): identical retest geometry (low=104, close=106) -- within
+    # the cooldown window, must be skipped (row6 is a non-touching filler).
+    # row7 (10:05): same signal again, exactly at the cooldown boundary --
+    # must be taken (>=, not >).
+    # row8 (10:10): fills row7's target (112).
+    strategy_cfg = _permissive_cfg(max_trades_per_day=10, stop_cooldown_minutes=30)
+    cost_cfg = costs.CostConfig()
+    sim_cfg = simulator.SimulatorConfig()
+
+    trades = simulator.run_symbol("TEST", df, strategy_cfg, cost_cfg, sim_cfg)
+    assert len(trades) == 2
+    assert trades[0].entry_timestamp == df.loc[3, "timestamp"]
+    assert trades[0].exit_reason == "stop"
+    assert trades[1].entry_timestamp == df.loc[7, "timestamp"]
+    assert trades[1].exit_reason == "target"
+
+
+def test_cooldown_disabled_allows_immediate_reentry():
+    df = _frame(
+        "2026-01-05",
+        ["09:15", "09:20", "09:25", "09:30", "09:35", "09:40"],
+        opens=[100, 108, 108, 106, 106, 106],
+        highs=[101, 112, 110, 106, 107, 106],
+        lows=[99, 107, 108, 104, 103, 104],
+        closes=[100, 108, 109, 106, 105, 106],
+        vwaps=[100] * 6,
+        band_upper=[105] * 6,
+        band_lower=[95] * 6,
+        conditions=[INSIDE_VALUE, ACCEPTED_ABOVE] + [INSIDE_VALUE] * 4,
+        streaks=[0, 3, 0, 0, 0, 0],
+    )
+    # row3 (09:30): entry. row4 (09:35): stop-out (same "no same-candle
+    # re-entry" rule as Weekend 3 still applies, so the earliest a fresh
+    # position can open is the *next* candle regardless of cooldown).
+    # row5 (09:40), only 5 minutes after the stop-out: with cooldown disabled
+    # (0 minutes) this retest must be taken immediately.
+    strategy_cfg = _permissive_cfg(max_trades_per_day=10, stop_cooldown_minutes=0)
+    cost_cfg = costs.CostConfig()
+    sim_cfg = simulator.SimulatorConfig()
+
+    trades = simulator.run_symbol("TEST", df, strategy_cfg, cost_cfg, sim_cfg)
+    assert len(trades) == 2
+    assert trades[0].exit_reason == "stop"
+    assert trades[1].entry_timestamp == df.loc[5, "timestamp"]

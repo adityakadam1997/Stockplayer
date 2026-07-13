@@ -26,6 +26,20 @@ strategy:
   no_entry_after: "14:45"           # no new entries after this IST time
   square_off_at: "15:15"            # force-close all open positions at this IST time
 
+  # Weekend 4: stop floor -- final stop distance = max(structural stop distance,
+  # stop_floor_pct * entry_price, atr_mult * ATR20). Only ever widens the stop.
+  stop_floor_pct: 0.0035
+  atr_mult: 1.0
+
+  # Weekend 4: skip a proposal if its estimated full round-trip cost exceeds
+  # this fraction of the nominal rupee risk on the trade (at the position
+  # size the floored stop implies).
+  cost_viability_max_pct: 0.15
+
+  # Weekend 4: frequency discipline (enforced by the simulator).
+  max_trades_per_day: 2         # per symbol per day, all setups combined
+  stop_cooldown_minutes: 30     # after a stop-out in a symbol, before a new entry in that symbol
+
 costs:
   brokerage_per_order: 20.0   # flat ₹ per executed order (entry + exit = 2 orders)
   stt_sell_pct: 0.00025       # STT on intraday equity, sell side only
