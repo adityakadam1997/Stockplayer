@@ -18,7 +18,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from backtest.costs import CostConfig
 from backtest.simulator import TradeRecord
+from strategy.base import StrategyConfig
+from strategy.engine import generate_proposals_with_funnel
 
 
 def trades_to_dataframe(trades: list[TradeRecord]) -> pd.DataFrame:
@@ -164,12 +167,162 @@ def print_report(report: Report) -> None:
         print(pd.DataFrame(rows).to_string(index=False))
 
 
+def compute_funnel_table(
+    symbol_data: dict[str, pd.DataFrame],
+    strategy_cfg: StrategyConfig,
+    cost_cfg: CostConfig,
+    executed_by_symbol: dict[str, int] | None = None,
+) -> pd.DataFrame:
+    """Diagnostic only. How many candidate signals survive each filter stage,
+    per symbol and overall: ``raw`` (setup-detector candidates that clear the
+    entry window + wide-band guard), ``after_stop_floor_rr``, and
+    ``after_cost_viability``. If ``executed_by_symbol`` is given (trade counts
+    from the simulator, keyed by symbol), an ``executed`` column is added --
+    further trimmed by one-trade-at-a-time, the daily cap, and the stop-out
+    cooldown, none of which the engine itself knows about."""
+    rows = []
+    for symbol, df in symbol_data.items():
+        _, funnel = generate_proposals_with_funnel(df, symbol, strategy_cfg, cost_cfg)
+        row = {"symbol": symbol, **funnel}
+        if executed_by_symbol is not None:
+            row["executed"] = executed_by_symbol.get(symbol, 0)
+        rows.append(row)
+
+    table = pd.DataFrame(rows)
+    if table.empty:
+        return table
+    totals = {"symbol": "TOTAL"}
+    for col in table.columns:
+        if col != "symbol":
+            totals[col] = int(table[col].sum())
+    return pd.concat([table, pd.DataFrame([totals])], ignore_index=True)
+
+
+def print_funnel_table(funnel_table: pd.DataFrame) -> None:
+    print("\n=== FUNNEL (candidate signals surviving each filter stage) ===")
+    if funnel_table.empty:
+        print("(no data)")
+        return
+    print(funnel_table.to_string(index=False))
+
+
+def compute_cost_risk_ratio_distribution(trades_df: pd.DataFrame) -> dict:
+    """Diagnostic only. For *executed* trades: estimated round-trip cost as a
+    fraction of the trade's nominal rupee risk (``total_costs / (risk_per_share
+    * quantity)``), summarized. Compare against ``cost_viability_max_pct`` --
+    every executed trade should sit at or under it by construction, but the
+    distribution shows how close to the bar they are."""
+    empty = {"mean_pct": 0.0, "median_pct": 0.0, "min_pct": 0.0, "max_pct": 0.0, "n": 0}
+    if trades_df.empty:
+        return empty
+
+    risk_per_share = (trades_df["entry_signal_price"] - trades_df["stop_price"]).abs()
+    nominal_risk = risk_per_share * trades_df["quantity"]
+    ratio = (trades_df["total_costs"] / nominal_risk.replace(0, pd.NA)).dropna()
+    if ratio.empty:
+        return empty
+    return {
+        "mean_pct": float(ratio.mean() * 100),
+        "median_pct": float(ratio.median() * 100),
+        "min_pct": float(ratio.min() * 100),
+        "max_pct": float(ratio.max() * 100),
+        "n": len(ratio),
+    }
+
+
+def print_cost_risk_ratio_distribution(distribution: dict) -> None:
+    print("\n=== COST/RISK RATIO OF EXECUTED TRADES (total_costs / nominal_risk) ===")
+    if distribution["n"] == 0:
+        print("(no trades)")
+        return
+    print(
+        f"n={distribution['n']}  mean={distribution['mean_pct']:.1f}%  "
+        f"median={distribution['median_pct']:.1f}%  min={distribution['min_pct']:.1f}%  "
+        f"max={distribution['max_pct']:.1f}%"
+    )
+
+
+_STOP_DISTANCE_COLUMNS = ["setup_id", "avg_stop_rs", "median_stop_rs", "avg_stop_pct", "median_stop_pct"]
+
+
+def compute_stop_distance_table(trades_df: pd.DataFrame) -> pd.DataFrame:
+    """Diagnostic only. Average/median stop distance (rupees and % of entry
+    price) of *executed* trades, overall and per setup -- compare against
+    ``compute_candle_range_diagnostics`` to see stop sizes against noise."""
+    if trades_df.empty:
+        return pd.DataFrame(columns=_STOP_DISTANCE_COLUMNS)
+
+    df = trades_df.copy()
+    df["stop_distance_rs"] = (df["entry_signal_price"] - df["stop_price"]).abs()
+    df["stop_distance_pct"] = df["stop_distance_rs"] / df["entry_signal_price"] * 100
+
+    def _row(label: str, group: pd.DataFrame) -> dict:
+        return {
+            "setup_id": label,
+            "avg_stop_rs": group["stop_distance_rs"].mean(),
+            "median_stop_rs": group["stop_distance_rs"].median(),
+            "avg_stop_pct": group["stop_distance_pct"].mean(),
+            "median_stop_pct": group["stop_distance_pct"].median(),
+        }
+
+    rows = [_row("OVERALL", df)]
+    rows += [_row(setup_id, group) for setup_id, group in df.groupby("setup_id", sort=True)]
+    return pd.DataFrame(rows, columns=_STOP_DISTANCE_COLUMNS)
+
+
+def print_stop_distance_table(table: pd.DataFrame) -> None:
+    print("\n=== STOP DISTANCE (executed trades, at entry) ===")
+    if table.empty:
+        print("(no trades)")
+        return
+    formatted = table.copy()
+    formatted["avg_stop_rs"] = formatted["avg_stop_rs"].map("{:.2f}".format)
+    formatted["median_stop_rs"] = formatted["median_stop_rs"].map("{:.2f}".format)
+    formatted["avg_stop_pct"] = formatted["avg_stop_pct"].map("{:.3f}%".format)
+    formatted["median_stop_pct"] = formatted["median_stop_pct"].map("{:.3f}%".format)
+    print(formatted.to_string(index=False))
+
+
+_TRADES_PER_DAY_COLUMNS = ["setup_id", "total_trades", "trades_per_day_all_symbols", "trades_per_day_per_symbol"]
+
+
+def compute_trades_per_day_table(trades_df: pd.DataFrame, n_days: int, n_symbols: int) -> pd.DataFrame:
+    """Diagnostic only. Trade frequency, overall and per setup, aggregated
+    across all symbols in the run and averaged per symbol."""
+    if trades_df.empty or n_days <= 0:
+        return pd.DataFrame(columns=_TRADES_PER_DAY_COLUMNS)
+
+    def _row(label: str, count: int) -> dict:
+        return {
+            "setup_id": label,
+            "total_trades": count,
+            "trades_per_day_all_symbols": count / n_days,
+            "trades_per_day_per_symbol": (count / n_days / n_symbols) if n_symbols else 0.0,
+        }
+
+    rows = [_row("OVERALL", len(trades_df))]
+    rows += [_row(setup_id, len(group)) for setup_id, group in trades_df.groupby("setup_id", sort=True)]
+    return pd.DataFrame(rows, columns=_TRADES_PER_DAY_COLUMNS)
+
+
+def print_trades_per_day_table(table: pd.DataFrame) -> None:
+    print("\n=== TRADES PER DAY ===")
+    if table.empty:
+        print("(no trades)")
+        return
+    formatted = table.copy()
+    formatted["trades_per_day_all_symbols"] = formatted["trades_per_day_all_symbols"].map("{:.3f}".format)
+    formatted["trades_per_day_per_symbol"] = formatted["trades_per_day_per_symbol"].map("{:.3f}".format)
+    print(formatted.to_string(index=False))
+
+
 def compute_candle_range_diagnostics(symbol_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Diagnostic only -- no effect on any trading decision. Average/median
-    5-min candle range as a percentage of price, per symbol, so stop sizes
-    can always be compared against the market's own intra-candle noise floor
-    (this is what motivated Weekend 4's stop floor: Weekend 3's stops
-    averaged ~0.11-0.13% of price, inside single-candle noise)."""
+    candle range as a percentage of price, per symbol, so stop sizes can
+    always be compared against the market's own intra-candle noise floor at
+    whatever timeframe ``symbol_data`` is on (this is what motivated Weekend
+    4's stop floor: Weekend 3's 5-min stops averaged ~0.11-0.13% of price,
+    inside single-candle noise)."""
     rows = []
     for symbol, df in symbol_data.items():
         range_pct = (df["high"] - df["low"]) / df["close"] * 100
@@ -185,8 +338,9 @@ def compute_candle_range_diagnostics(symbol_data: dict[str, pd.DataFrame]) -> pd
     ).reset_index(drop=True)
 
 
-def print_candle_range_diagnostics(diagnostics: pd.DataFrame) -> None:
-    print("\n=== CANDLE RANGE DIAGNOSTIC (5-min, % of price) ===")
+def print_candle_range_diagnostics(diagnostics: pd.DataFrame, interval_label: str = "") -> None:
+    label = f" ({interval_label})" if interval_label else ""
+    print(f"\n=== CANDLE RANGE DIAGNOSTIC{label} (% of price) ===")
     if diagnostics.empty:
         print("(no data)")
         return

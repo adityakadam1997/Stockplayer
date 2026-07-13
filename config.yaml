@@ -54,6 +54,27 @@ backtest:
   capital: 100000.0     # starting capital per the sizing formula
   risk_pct: 0.005        # fraction of capital risked per trade
 
+# Cycle 2 (Weekend 5): the identical VWAP Wave system re-tested on 15-min
+# bars. The 5-min profile above (data/signals/strategy) is left untouched for
+# reproducibility of the Weekend 3/4 runs -- ``timeframes.<name>`` sections
+# below only list the deltas from it; everything not listed here (targets,
+# setup detector logic, R:R threshold, risk_pct, capital, wide-band guard,
+# stop-floor/cost-viability/frequency-discipline formulas and thresholds) is
+# inherited unchanged. Select a profile with scripts/run_backtest.py --timeframe.
+timeframes:
+  15min:
+    data:
+      interval_minutes: 15
+    signals:
+      acceptance_candles: 2          # 2 x 15min = 30 min of acceptance (was 3 x 5min = 15 min)
+    strategy:
+      session_open_no_entry_minutes: 30   # first two 15-min bars: 09:15-09:45 (was 09:15-09:30)
+      no_entry_after: "14:30"             # last entry (was 14:45)
+      # square_off_at, stop_floor_pct, atr_mult, cost_viability_max_pct,
+      # max_trades_per_day, stop_cooldown_minutes, min_rr, wide_band_guard_pct:
+      # unchanged, inherited from strategy: above. ATR20 is naturally larger
+      # on 15-min bars even with an unchanged atr_mult.
+
 watchlist:
   - RELIANCE
   - HDFCBANK
