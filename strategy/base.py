@@ -90,10 +90,16 @@ def _parse_time(value: str | time) -> time:
     return time(hour, minute)
 
 
-def load_strategy_config(config_path: Path) -> StrategyConfig:
+def load_strategy_config(config_path: Path, timeframe: str | None = None) -> StrategyConfig:
+    """``timeframe`` (e.g. ``"15min"``) merges ``timeframes.<timeframe>.strategy``
+    on top of the base ``strategy:`` section -- see config.yaml's ``timeframes:``
+    block. ``None`` (or a timeframe with no override section) uses the base
+    5-min profile unchanged."""
     with config_path.open() as f:
         raw = yaml.safe_load(f)
-    strategy_raw = raw.get("strategy", {})
+    strategy_raw = dict(raw.get("strategy", {}))
+    if timeframe:
+        strategy_raw.update(raw.get("timeframes", {}).get(timeframe, {}).get("strategy", {}))
     backtest_raw = raw.get("backtest", {})
     defaults = StrategyConfig()
     return StrategyConfig(

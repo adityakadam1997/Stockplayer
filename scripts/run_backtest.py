@@ -15,6 +15,11 @@ Usage:
     # Stress test: inflate slippage and brokerage on top of config.yaml's costs:
     python scripts/run_backtest.py --start-date 2026-03-01 --end-date 2026-07-10 \\
         --slippage-multiplier 2.0 --brokerage-multiplier 1.5
+
+    # Timeframe profile (see config.yaml's timeframes: block); reads from the
+    # matching cache/{SYMBOL}_{interval}min.parquet -- run
+    # scripts/resample_data.py first to populate it:
+    python scripts/run_backtest.py --timeframe 15min
 """
 
 from __future__ import annotations
@@ -57,6 +62,12 @@ def parse_args() -> argparse.Namespace:
         default=1.0,
         help="Stress-test override: multiplies brokerage_per_order.",
     )
+    parser.add_argument(
+        "--timeframe",
+        default=None,
+        help="A profile name under config.yaml's timeframes: block (e.g. '15min'). "
+        "Omit for the base 5-min profile.",
+    )
     parser.add_argument("--no-save", action="store_true", help="Don't write backtest/results/.")
     return parser.parse_args()
 
@@ -71,11 +82,12 @@ def main() -> None:
         config = yaml.safe_load(f)
 
     cache_dir = REPO_ROOT / config["data"]["cache_dir"]
-    interval_minutes = config["data"]["interval_minutes"]
+    timeframe_overrides = config.get("timeframes", {}).get(args.timeframe, {}) if args.timeframe else {}
+    interval_minutes = timeframe_overrides.get("data", {}).get("interval_minutes", config["data"]["interval_minutes"])
     watchlist = args.symbols.split(",") if args.symbols else config["watchlist"]
 
-    signals_cfg = load_signals_config(config_path)
-    strategy_cfg = load_strategy_config(config_path)
+    signals_cfg = load_signals_config(config_path, timeframe=args.timeframe)
+    strategy_cfg = load_strategy_config(config_path, timeframe=args.timeframe)
     cost_cfg = costs.load_cost_config(config_path)
     sim_cfg = simulator.load_simulator_config(config_path)
 
@@ -134,12 +146,31 @@ def main() -> None:
     rpt = report.build_report(trades)
     report.print_report(rpt)
 
+    executed_by_symbol: dict[str, int] = {}
+    for trade in trades:
+        executed_by_symbol[trade.symbol] = executed_by_symbol.get(trade.symbol, 0) + 1
+    funnel_table = report.compute_funnel_table(symbol_data, strategy_cfg, cost_cfg, executed_by_symbol)
+    report.print_funnel_table(funnel_table)
+
+    cost_risk_distribution = report.compute_cost_risk_ratio_distribution(rpt.trades_df)
+    report.print_cost_risk_ratio_distribution(cost_risk_distribution)
+
+    stop_distance_table = report.compute_stop_distance_table(rpt.trades_df)
+    report.print_stop_distance_table(stop_distance_table)
+
+    n_days = max((df["timestamp"].dt.date.nunique() for df in symbol_data.values()), default=0)
+    trades_per_day_table = report.compute_trades_per_day_table(rpt.trades_df, n_days, len(symbol_data))
+    report.print_trades_per_day_table(trades_per_day_table)
+
     diagnostics = report.compute_candle_range_diagnostics(symbol_data)
-    report.print_candle_range_diagnostics(diagnostics)
+    report.print_candle_range_diagnostics(diagnostics, interval_label=f"{interval_minutes}-min")
 
     if not args.no_save:
         out_dir = REPO_ROOT / "backtest" / "results"
         report.save_report(rpt, out_dir, candle_range_diagnostics=diagnostics)
+        funnel_table.to_csv(out_dir / "funnel.csv", index=False)
+        stop_distance_table.to_csv(out_dir / "stop_distance.csv", index=False)
+        trades_per_day_table.to_csv(out_dir / "trades_per_day.csv", index=False)
         print(f"\n[backtest] wrote {out_dir / 'summary.csv'}, {out_dir / 'trades.csv'}, and diagnostics.")
 
 

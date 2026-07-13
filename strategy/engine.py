@@ -125,20 +125,15 @@ def _cost_viable(proposal: TradeProposal, cfg: StrategyConfig, cost_cfg: costs.C
     return estimated_cost <= cfg.cost_viability_max_pct * nominal_risk
 
 
-def generate_proposals(
+def _run_pipeline(
     df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs.CostConfig
-) -> list[TradeProposal]:
-    """``df`` must already carry vwap/band/condition/atr20 columns (the output
-    of ``signals.vwap.compute_session_vwap`` + ``signals.condition.compute_condition``
-    + ``strategy.base.compute_atr``), sorted ascending by timestamp. Returns
-    every proposal that clears the global entry-window, wide-band-guard, stop
-    floor + R:R, and cost-viability filters -- one-trade-per-symbol and
-    stop-first fills are the simulator's job, not the engine's."""
+) -> tuple[list[TradeProposal], dict[str, int]]:
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"df is missing required columns: {missing}")
 
     proposals: list[TradeProposal] = []
+    funnel = {"raw": 0, "after_stop_floor_rr": 0, "after_cost_viability": 0}
     state = SessionState()
 
     for row in df.itertuples():
@@ -157,14 +152,41 @@ def generate_proposals(
 
         if _wide_band_guard_active(row, cfg):
             candidates = [p for p in candidates if p.setup_id not in _MEAN_REVERSION_SETUP_IDS]
+        funnel["raw"] += len(candidates)
 
         atr_value = getattr(row, ATR_COLUMN)
         candidates = [_apply_stop_floor(p, atr_value, cfg) for p in candidates]
         candidates = [p for p in candidates if p.rr_ratio >= cfg.min_rr]
+        funnel["after_stop_floor_rr"] += len(candidates)
+
         candidates = [p for p in candidates if _cost_viable(p, cfg, cost_cfg)]
+        funnel["after_cost_viability"] += len(candidates)
 
         proposals.extend(candidates)
 
         state = update_session_state(state, row, transition, cfg)
 
+    return proposals, funnel
+
+
+def generate_proposals(
+    df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs.CostConfig
+) -> list[TradeProposal]:
+    """``df`` must already carry vwap/band/condition/atr20 columns (the output
+    of ``signals.vwap.compute_session_vwap`` + ``signals.condition.compute_condition``
+    + ``strategy.base.compute_atr``), sorted ascending by timestamp. Returns
+    every proposal that clears the global entry-window, wide-band-guard, stop
+    floor + R:R, and cost-viability filters -- one-trade-per-symbol and
+    stop-first fills are the simulator's job, not the engine's."""
+    proposals, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
     return proposals
+
+
+def generate_proposals_with_funnel(
+    df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs.CostConfig
+) -> tuple[list[TradeProposal], dict[str, int]]:
+    """Same as ``generate_proposals``, plus a funnel dict counting candidates
+    surviving each filter stage (``raw`` -- after the entry-window and
+    wide-band guard; ``after_stop_floor_rr``; ``after_cost_viability``) --
+    diagnostic only, for ``backtest.report``."""
+    return _run_pipeline(df, symbol, cfg, cost_cfg)
