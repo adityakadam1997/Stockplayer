@@ -129,6 +129,30 @@ def download_symbol_history(
     return combined.reset_index(drop=True)
 
 
+def download_symbol_daily_history(
+    instrument_key: str,
+    lookback_years: int,
+    config: DownloaderConfig,
+    end_date: dt.date | None = None,
+) -> pd.DataFrame:
+    """Fetch daily candles for one symbol.
+
+    Unlike minute/hour candles, the V3 daily endpoint has no observed
+    chunking limit -- confirmed empirically: a single request spanning
+    ~6.5 years (2020-01-01 to 2026-07-10) returned 1620 candles in one call,
+    no ``UDAPI1148`` error. So this fetches the whole lookback window in one
+    request rather than paging like ``download_symbol_history`` must for
+    minute data.
+    """
+    end_date = end_date or dt.date.today()
+    start_date = end_date - dt.timedelta(days=lookback_years * 366)
+
+    candles = _request_chunk(instrument_key, "days", 1, start_date, end_date, config)
+    df = _candles_to_frame(candles)
+    df = df.drop_duplicates(subset="timestamp").sort_values("timestamp")
+    return df.reset_index(drop=True)
+
+
 def download_incremental(
     instrument_key: str,
     since: pd.Timestamp,

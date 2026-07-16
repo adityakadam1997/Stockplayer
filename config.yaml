@@ -75,6 +75,49 @@ timeframes:
       # unchanged, inherited from strategy: above. ATR20 is naturally larger
       # on 15-min bars even with an unchanged atr_mult.
 
+  # Cycle 3: the identical VWAP Wave setups on daily bars (weekly-anchored
+  # bands, monthly-anchored trend filter), swing-holding 2-10 days, cash
+  # DELIVERY settlement -- a different cost model (costs_delivery: below),
+  # different capital/risk-per-trade, wider stops. min_rr, cost_viability_max_pct,
+  # wide_band_guard_pct, stop_buffer_pct, setup2_min_vwap_crossings,
+  # setup3_allow_fallback, setup4_vwap_touch_tolerance_pct: all unchanged,
+  # inherited from strategy: above. No entry-window/square-off/max-trades-
+  # per-day/cooldown concepts -- those are intraday-only; swing_portfolio:
+  # below has the real analogues (time-stop, concurrent-position caps).
+  swing:
+    data:
+      interval_minutes: 1440   # daily bars; cache/<SYMBOL>_1d.parquet (interval_label override, not this value)
+    signals:
+      acceptance_candles: 2    # two daily closes outside value (was 3 candles intraday)
+    strategy:
+      stop_floor_pct: 0.025    # 2.5% of price (was 0.35%)
+      atr_mult: 1.5            # 1.5 x ATR14 on daily bars (was 1.0 x ATR20)
+    backtest:
+      capital: 300000.0        # was 100000.0
+      risk_pct: 0.01           # 1% of capital = Rs 3,000/trade (was 0.5%)
+
+# Cycle 3: cash-DELIVERY equity cost model -- see backtest/costs_delivery.py
+# for sourcing notes on every figure (Upstox's own site is blocked by this
+# environment's egress policy; verified via >=2 independent secondary
+# sources instead, flagged prominently in the PR).
+costs_delivery:
+  brokerage_per_order: 0.0    # Upstox charges no brokerage on delivery-based equity trades
+  stt_pct: 0.001               # 0.1% STT, BOTH legs (delivery; SEBI-mandated)
+  txn_charge_pct: 0.0000325    # 0.00325% NSE exchange transaction charge, both legs
+  sebi_fee_pct: 0.000001       # 0.0001% (Rs 10/crore) SEBI turnover fee, both legs
+  stamp_duty_pct: 0.00015      # 0.015% stamp duty, buy leg only
+  dp_charge_rs: 20.0           # flat Rs 20 (+ GST) DP charge, sell leg only, per scrip per day
+  gst_pct: 0.18                # on (brokerage + transaction charges + SEBI fee + DP charges)
+  slippage_pct: 0.0003         # 0.03% per side ("limit-ish patience" delivery entries/exits)
+
+# Cycle 3 portfolio-level execution rules (backtest.swing_simulator) -- these
+# have no intraday analogue (no per-day trade cap/cooldown; multi-day holds
+# with a hard time-stop and portfolio-wide concurrency caps instead).
+swing_portfolio:
+  time_stop_days: 10            # force-exit at close if neither stop nor target hit within N trading days
+  max_concurrent_positions: 5   # portfolio-wide, across all symbols
+  max_positions_per_symbol: 1
+
 watchlist:
   - RELIANCE
   - HDFCBANK
