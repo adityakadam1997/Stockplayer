@@ -61,6 +61,17 @@ def check_market_hours(df: pd.DataFrame) -> int:
     return int((~(within_hours & weekday)).sum())
 
 
+def check_trading_weekday(df: pd.DataFrame) -> int:
+    """For daily-granularity candles: count timestamps that fall on a
+    weekend. Unlike ``check_market_hours`` (intraday), a daily candle's
+    time-of-day is not meaningful (Upstox stamps them at midnight IST) --
+    only the calendar date matters."""
+    if df.empty:
+        return 0
+    weekday = df["timestamp"].dt.weekday < 5  # Mon=0 .. Sun=6
+    return int((~weekday).sum())
+
+
 def check_ohlc(df: pd.DataFrame) -> int:
     """Count rows violating high >= max(open, close) and low <= min(open, close)."""
     if df.empty:
@@ -70,18 +81,26 @@ def check_ohlc(df: pd.DataFrame) -> int:
     return int((~(high_ok & low_ok)).sum())
 
 
-def gap_report(df: pd.DataFrame, interval_minutes: int) -> tuple[int, list[tuple[str, int, int]]]:
+def gap_report(
+    df: pd.DataFrame, interval_minutes: int, expected_per_day: int | None = None
+) -> tuple[int, list[tuple[str, int, int]]]:
     """Identify trading-day gaps.
 
     Returns ``(holiday_days, partial_days)`` where ``holiday_days`` is the count of
     weekdays in range with zero candles (assumed exchange holidays, not flagged),
     and ``partial_days`` lists ``(date, actual_count, expected_count)`` for weekdays
     with some but fewer than the expected number of candles (real gaps).
+
+    ``expected_per_day`` overrides the intraday ``375 // interval_minutes``
+    calculation -- pass ``1`` for daily-granularity data (each weekday has
+    exactly one candle or none; there's no such thing as a "partial"
+    trading day at daily resolution).
     """
     if df.empty:
         return 0, []
 
-    expected_per_day = (375 // interval_minutes)  # 09:15-15:30 = 375 minutes
+    if expected_per_day is None:
+        expected_per_day = 375 // interval_minutes  # 09:15-15:30 = 375 minutes
     counts = df.groupby(df["timestamp"].dt.date).size()
 
     first_day = df["timestamp"].dt.date.min()

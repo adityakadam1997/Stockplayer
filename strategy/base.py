@@ -98,9 +98,11 @@ def load_strategy_config(config_path: Path, timeframe: str | None = None) -> Str
     with config_path.open() as f:
         raw = yaml.safe_load(f)
     strategy_raw = dict(raw.get("strategy", {}))
+    backtest_raw = dict(raw.get("backtest", {}))
     if timeframe:
-        strategy_raw.update(raw.get("timeframes", {}).get(timeframe, {}).get("strategy", {}))
-    backtest_raw = raw.get("backtest", {})
+        overrides = raw.get("timeframes", {}).get(timeframe, {})
+        strategy_raw.update(overrides.get("strategy", {}))
+        backtest_raw.update(overrides.get("backtest", {}))
     defaults = StrategyConfig()
     return StrategyConfig(
         min_rr=strategy_raw.get("min_rr", defaults.min_rr),
@@ -214,13 +216,18 @@ def classify_transition(prev_condition: str | None, curr_condition: str) -> str 
     return None
 
 
-def update_session_state(state: SessionState, row, transition: str | None, cfg: StrategyConfig) -> SessionState:
+def update_session_state(
+    state: SessionState, row, transition: str | None, cfg: StrategyConfig, period: object | None = None
+) -> SessionState:
     """Fold ``row`` (and the already-computed ``transition``) into ``state``,
-    returning the state to use for the *next* candle. Starts a fresh state at a
-    new trading day."""
-    day = row.timestamp.date()
-    if state.day != day:
-        state = SessionState(day=day)
+    returning the state to use for the *next* candle. Starts a fresh state
+    whenever ``period`` (default: the row's own calendar day) changes --
+    Cycle 3's swing engine passes a weekly period key here to reset this
+    exact same state machine on a WEEK boundary instead of a day boundary,
+    reusing all of setup1-4's detectors unmodified."""
+    period = period if period is not None else row.timestamp.date()
+    if state.day != period:
+        state = SessionState(day=period)
 
     if not pd.isna(row.vwap):
         if row.close > row.vwap:

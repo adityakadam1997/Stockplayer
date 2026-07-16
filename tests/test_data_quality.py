@@ -111,3 +111,52 @@ def test_summary_table_shape() -> None:
     assert len(table) == 1
     assert table.iloc[0]["symbol"] == "TEST"
     assert bool(table.iloc[0]["clean"]) is True
+
+
+# ---------------------------------------------------------------------------
+# Daily-granularity adaptations (Cycle 3)
+# ---------------------------------------------------------------------------
+
+
+def _daily_candles(dates: list[str]) -> pd.DataFrame:
+    ts = pd.to_datetime(dates).tz_localize("Asia/Kolkata")  # midnight IST, like Upstox's daily candles
+    n = len(ts)
+    price = [100.0 + i for i in range(n)]
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "open": price,
+            "high": [p + 1 for p in price],
+            "low": [p - 1 for p in price],
+            "close": price,
+            "volume": [10000] * n,
+        }
+    )
+
+
+def test_check_trading_weekday_clean() -> None:
+    df = _daily_candles(["2026-01-05", "2026-01-06", "2026-01-07"])  # Mon-Wed
+    assert quality.check_trading_weekday(df) == 0
+
+
+def test_check_trading_weekday_flags_weekend() -> None:
+    df = _daily_candles(["2026-01-05", "2026-01-10", "2026-01-11"])  # Mon, Sat, Sun
+    assert quality.check_trading_weekday(df) == 2
+
+
+def test_check_market_hours_would_false_positive_on_midnight_stamped_daily_candles() -> None:
+    # Documents *why* check_trading_weekday exists as a separate function --
+    # the intraday check would wrongly flag every daily candle (stamped at
+    # midnight) as "outside market hours".
+    df = _daily_candles(["2026-01-05", "2026-01-06"])
+    assert quality.check_market_hours(df) == len(df)
+
+
+def test_gap_report_expected_per_day_override_for_daily_bars() -> None:
+    # A daily-bar day either has exactly 1 candle or 0 (a holiday) -- there's
+    # no such thing as a "partial" day at this granularity, so with
+    # expected_per_day=1, partial_days must always be empty.
+    df = _daily_candles(["2026-01-05", "2026-01-06", "2026-01-08"])  # 2026-01-07 (Wed) missing -> a "holiday"
+    holiday_days, partial_days = quality.gap_report(df, interval_minutes=1440, expected_per_day=1)
+    assert holiday_days == 1
+    assert partial_days == []
