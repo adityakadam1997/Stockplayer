@@ -15,7 +15,7 @@ import pandas as pd
 from backtest.costs_delivery import DeliveryCostConfig
 from backtest.swing_simulator import SwingTradeRecord
 from strategy.base import StrategyConfig
-from strategy.swing_engine import generate_proposals_with_funnel
+from strategy.swing_engine import generate_proposals_with_diagnostics, generate_proposals_with_funnel
 
 
 def trades_to_dataframe(trades: list[SwingTradeRecord]) -> pd.DataFrame:
@@ -187,7 +187,10 @@ def compute_funnel_table(
 ) -> pd.DataFrame:
     """Diagnostic only. Candidate signals surviving each filter stage, per
     symbol and overall -- ``raw`` (post wide-band-guard), ``after_trend_filter``,
-    ``after_stop_floor_rr``, ``after_cost_viability``, and (if given) ``executed``
+    ``suppressed_shorts`` / ``after_long_only`` (Cycle 3B: cash delivery
+    cannot short), ``invalid_geometry`` / ``after_valid_geometry`` (Cycle 3B:
+    target recomputed at signal close must be strictly above entry),
+    ``after_rr``, ``after_cost_viability``, and (if given) ``executed``
     (further trimmed by next-day-fill availability and portfolio capacity,
     neither of which the engine itself knows about)."""
     rows = []
@@ -214,6 +217,49 @@ def print_funnel_table(funnel_table: pd.DataFrame) -> None:
         print("(no data)")
         return
     print(funnel_table.to_string(index=False))
+
+
+def compute_rr_distribution(
+    symbol_data: dict[str, pd.DataFrame],
+    strategy_cfg: StrategyConfig,
+    cost_cfg: DeliveryCostConfig,
+) -> dict:
+    """Cycle 3B diagnostic: distribution of ``rr_ratio`` across every
+    candidate that reached the valid-geometry stage (post stop-floor,
+    pre R:R-filter) -- i.e. every candidate with a genuinely positive
+    reward, before the ``min_rr`` bar is applied. Shows how many candidates
+    clear the R:R bar and by how much, independent of cost-viability."""
+    empty = {"n": 0, "mean": 0.0, "median": 0.0, "min": 0.0, "max": 0.0, "n_at_or_above_min_rr": 0}
+    all_rr: list[float] = []
+    for symbol, df in symbol_data.items():
+        _, _, rr_values = generate_proposals_with_diagnostics(df, symbol, strategy_cfg, cost_cfg)
+        all_rr.extend(rr_values)
+
+    if not all_rr:
+        return empty
+
+    series = pd.Series(all_rr)
+    return {
+        "n": len(series),
+        "mean": float(series.mean()),
+        "median": float(series.median()),
+        "min": float(series.min()),
+        "max": float(series.max()),
+        "n_at_or_above_min_rr": int((series >= strategy_cfg.min_rr).sum()),
+    }
+
+
+def print_rr_distribution(distribution: dict, min_rr: float) -> None:
+    print("\n=== R:R DISTRIBUTION (valid-geometry candidates, pre R:R filter) ===")
+    if distribution["n"] == 0:
+        print("(no valid-geometry candidates)")
+        return
+    print(
+        f"n={distribution['n']}  mean={distribution['mean']:.2f}  median={distribution['median']:.2f}  "
+        f"min={distribution['min']:.2f}  max={distribution['max']:.2f}  "
+        f">={min_rr}: {distribution['n_at_or_above_min_rr']} "
+        f"({distribution['n_at_or_above_min_rr'] / distribution['n']:.1%})"
+    )
 
 
 def compute_cost_risk_ratio_distribution(trades_df: pd.DataFrame) -> dict:

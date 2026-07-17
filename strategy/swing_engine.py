@@ -1,4 +1,4 @@
-"""Cycle 3: the identical setup1-4 detectors, pointed at weekly-anchored
+"""Cycle 3 / 3B: the identical setup1-4 detectors, pointed at weekly-anchored
 bands on daily bars instead of session-anchored bands on intraday bars.
 
 Reuses:
@@ -29,6 +29,27 @@ completed daily candle) -- used only to size the stop/target/R:R, exactly
 like the intraday engine. It is NOT the actual fill price: Cycle 3's core
 adaptation is that fills happen at the *next* trading day's open (see
 ``backtest.swing_simulator``), never at the close a signal was read off of.
+
+CYCLE 3B REPAIR (Cycle 3 returned zero trades and diagnosis showed why:
+setup1's target was ``state.acceptance_extreme_high``, a value tracked
+*across* candles -- on 5-min bars the extend->pullback->reclaim sequence
+always spans several distinct candles, so by the time a retest fires, the
+tracked extreme genuinely reflects an already-observed prior peak. On a
+single **daily** candle that whole sequence can happen within one bar, so
+the tracked extreme is frequently stale by the time the day's own close has
+already moved past it -- 64-67% of Cycle 3's candidates had targets on the
+wrong side of entry as a result. Two fixes, both applied at proposal time,
+after detection, before the stop floor):
+1. Long-only (``_long_only_filter``) -- cash delivery cannot short; the
+   detectors are left completely intact, shorts are just discarded here,
+   counted in the funnel.
+2. Target recomputation (``_recompute_target``) -- replaces whatever target
+   the detector computed with one read from CURRENT structure at the signal
+   close, never from state accumulated earlier in the sequence. A proposal
+   whose recomputed target isn't strictly above entry is INVALID and
+   discarded (``invalid_geometry`` in the funnel) -- distinct from failing
+   the R:R bar, which only applies to candidates with genuinely positive
+   reward.
 """
 
 from __future__ import annotations
@@ -54,6 +75,9 @@ ATR_PERIOD = 14
 ATR_COLUMN = f"atr{ATR_PERIOD}"
 WEEK_FREQ = "W-SUN"  # Monday-Sunday weeks; matches signals.vwap.compute_weekly_vwap
 
+ROLLING_HIGH_WINDOW = 20
+ROLLING_HIGH_COLUMN = f"high_{ROLLING_HIGH_WINDOW}d_prior"
+
 REQUIRED_COLUMNS = [
     "timestamp",
     "open",
@@ -63,13 +87,23 @@ REQUIRED_COLUMNS = [
     "vwap",
     "band_upper_1",
     "band_lower_1",
+    "band_upper_2",
     "condition",
     "acceptance_streak",
     ATR_COLUMN,
     "monthly_vwap",
+    ROLLING_HIGH_COLUMN,
 ]
 
 _MEAN_REVERSION_SETUP_IDS = (setup2_fade.SETUP_ID, setup4_bounce.SETUP_ID)
+
+
+def compute_prior_n_day_high(df: pd.DataFrame, window: int = ROLLING_HIGH_WINDOW) -> pd.Series:
+    """Rolling max of ``high`` over the ``window`` bars strictly BEFORE the
+    current row (``shift(1)`` excludes today) -- no lookahead by
+    construction. Fewer than ``window`` prior bars available (start of data)
+    just uses whatever exists (``min_periods=1``)."""
+    return df["high"].shift(1).rolling(window=window, min_periods=1).max()
 
 
 def _wide_band_guard_active(row, cfg: StrategyConfig) -> bool:
@@ -88,6 +122,45 @@ def _trend_filter_ok(proposal: TradeProposal, row) -> bool:
     if proposal.direction == LONG:
         return row.close > row.monthly_vwap
     return row.close < row.monthly_vwap
+
+
+def _long_only_filter(candidates: list[TradeProposal]) -> list[TradeProposal]:
+    """Cash delivery cannot short. Detector code stays intact; shorts are
+    simply discarded here (counted separately in the funnel as
+    ``suppressed_shorts``)."""
+    return [p for p in candidates if p.direction == LONG]
+
+
+def _recompute_target(proposal: TradeProposal, row) -> TradeProposal | None:
+    """Cycle 3B: replace the detector's target with one read from CURRENT
+    structure at the signal close, never from state tracked earlier in the
+    sequence. Returns ``None`` (invalid geometry) if the recomputed target
+    isn't strictly above entry -- long-only, so reward must be positive."""
+    entry = proposal.entry_price
+
+    if proposal.setup_id == setup1_discovery.SETUP_ID:
+        prior_high = row.__getattribute__(ROLLING_HIGH_COLUMN)
+        if not pd.isna(prior_high) and prior_high > entry:
+            new_target = prior_high
+        elif not pd.isna(row.band_upper_2) and row.band_upper_2 > entry:
+            new_target = row.band_upper_2
+        else:
+            return None
+    elif proposal.setup_id in (setup2_fade.SETUP_ID, setup3_return.SETUP_ID):
+        if pd.isna(row.vwap) or row.vwap <= entry:
+            return None
+        new_target = row.vwap
+    elif proposal.setup_id == setup4_bounce.SETUP_ID:
+        if pd.isna(row.band_upper_1) or row.band_upper_1 <= entry:
+            return None
+        new_target = row.band_upper_1
+    else:
+        return None
+
+    new_rr = compute_rr(entry, proposal.stop_price, new_target, proposal.direction)
+    return dataclasses.replace(
+        proposal, target_price=new_target, rr_ratio=new_rr, notes=f"{proposal.notes} | target_recomputed_at_signal"
+    )
 
 
 def _apply_stop_floor(proposal: TradeProposal, atr_value: float, cfg: StrategyConfig) -> TradeProposal:
@@ -138,13 +211,23 @@ def _cost_viable(proposal: TradeProposal, cfg: StrategyConfig, cost_cfg: costs_d
 
 def _run_pipeline(
     df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs_delivery.DeliveryCostConfig
-) -> tuple[list[TradeProposal], dict[str, int]]:
+) -> tuple[list[TradeProposal], dict[str, int], list[float]]:
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"df is missing required columns: {missing}")
 
     proposals: list[TradeProposal] = []
-    funnel = {"raw": 0, "after_trend_filter": 0, "after_stop_floor_rr": 0, "after_cost_viability": 0}
+    valid_geometry_rr: list[float] = []
+    funnel = {
+        "raw": 0,
+        "after_trend_filter": 0,
+        "suppressed_shorts": 0,
+        "after_long_only": 0,
+        "invalid_geometry": 0,
+        "after_valid_geometry": 0,
+        "after_rr": 0,
+        "after_cost_viability": 0,
+    }
     state = SessionState()
 
     week_periods = df["timestamp"].dt.tz_localize(None).dt.to_period(WEEK_FREQ)
@@ -168,10 +251,26 @@ def _run_pipeline(
         candidates = [p for p in candidates if _trend_filter_ok(p, row)]
         funnel["after_trend_filter"] += len(candidates)
 
+        pre_long_only_count = len(candidates)
+        candidates = _long_only_filter(candidates)
+        funnel["suppressed_shorts"] += pre_long_only_count - len(candidates)
+        funnel["after_long_only"] += len(candidates)
+
+        recomputed: list[TradeProposal] = []
+        for p in candidates:
+            new_p = _recompute_target(p, row)
+            if new_p is None:
+                funnel["invalid_geometry"] += 1
+            else:
+                recomputed.append(new_p)
+        candidates = recomputed
+        funnel["after_valid_geometry"] += len(candidates)
+
         atr_value = getattr(row, ATR_COLUMN)
         candidates = [_apply_stop_floor(p, atr_value, cfg) for p in candidates]
+        valid_geometry_rr.extend(p.rr_ratio for p in candidates)
         candidates = [p for p in candidates if p.rr_ratio >= cfg.min_rr]
-        funnel["after_stop_floor_rr"] += len(candidates)
+        funnel["after_rr"] += len(candidates)
 
         candidates = [p for p in candidates if _cost_viable(p, cfg, cost_cfg)]
         funnel["after_cost_viability"] += len(candidates)
@@ -180,7 +279,7 @@ def _run_pipeline(
 
         state = update_session_state(state, row, transition, cfg, period=week_period)
 
-    return proposals, funnel
+    return proposals, funnel, valid_geometry_rr
 
 
 def generate_proposals(
@@ -191,7 +290,7 @@ def generate_proposals(
     an ``atr14`` column (``strategy.base.compute_atr(df, period=14)``), and a
     ``monthly_vwap`` column (``signals.vwap.compute_monthly_vwap``), sorted
     ascending by timestamp."""
-    proposals, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
+    proposals, _, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
     return proposals
 
 
@@ -199,5 +298,21 @@ def generate_proposals_with_funnel(
     df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs_delivery.DeliveryCostConfig
 ) -> tuple[list[TradeProposal], dict[str, int]]:
     """Same as ``generate_proposals``, plus a funnel dict counting candidates
-    surviving each filter stage -- diagnostic only."""
+    surviving each filter stage -- diagnostic only. Funnel stage order: raw ->
+    after_trend_filter -> (suppressed_shorts /) after_long_only ->
+    (invalid_geometry /) after_valid_geometry -> after_rr ->
+    after_cost_viability. Proposals returned are what survived all stages
+    (pre next-day-fill / portfolio-capacity trimming, which happens in
+    ``backtest.swing_simulator``)."""
+    proposals, funnel, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
+    return proposals, funnel
+
+
+def generate_proposals_with_diagnostics(
+    df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs_delivery.DeliveryCostConfig
+) -> tuple[list[TradeProposal], dict[str, int], list[float]]:
+    """Same as ``generate_proposals_with_funnel``, plus the list of rr_ratio
+    values for every candidate that reached the valid-geometry stage
+    (post stop-floor, pre R:R-filter) -- feeds the R:R distribution
+    diagnostic."""
     return _run_pipeline(df, symbol, cfg, cost_cfg)
