@@ -28,6 +28,7 @@ from backtest import costs_delivery, swing_report, swing_simulator
 from data import store
 from signals import condition, vwap
 from signals.config import load_signals_config
+from strategy import swing_engine
 from strategy.base import compute_atr, load_strategy_config
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -122,6 +123,7 @@ def main() -> None:
             value_area_band=signals_cfg.value_area_band,
         )
         df = compute_atr(df, period=14)
+        df[swing_engine.ROLLING_HIGH_COLUMN] = swing_engine.compute_prior_n_day_high(df)
         symbol_data[symbol] = df
         print(f"[swing] {symbol}: {len(df)} daily candles, {df['timestamp'].dt.date.min()} to {df['timestamp'].dt.date.max()}.")
 
@@ -143,6 +145,9 @@ def main() -> None:
         executed_by_symbol[trade.symbol] = executed_by_symbol.get(trade.symbol, 0) + 1
     funnel_table = swing_report.compute_funnel_table(symbol_data, strategy_cfg, cost_cfg, executed_by_symbol)
     swing_report.print_funnel_table(funnel_table)
+
+    rr_distribution = swing_report.compute_rr_distribution(symbol_data, strategy_cfg, cost_cfg)
+    swing_report.print_rr_distribution(rr_distribution, strategy_cfg.min_rr)
 
     cost_risk_distribution = swing_report.compute_cost_risk_ratio_distribution(rpt.trades_df)
     swing_report.print_cost_risk_ratio_distribution(cost_risk_distribution)
