@@ -6,6 +6,8 @@ trading day does anything.
     python scripts/paper_daily.py
     python scripts/paper_daily.py --no-telegram   # for local/manual runs
     python scripts/paper_daily.py --symbols RELIANCE,SBIN
+    python scripts/paper_daily.py --test-telegram # sends a short connectivity test message and exits;
+                                                    # does not touch data/state/journal at all
 
 Steps (see paper/ package docstrings for the detailed design rationale):
 1. Incrementally update daily candles for the watchlist.
@@ -51,7 +53,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--symbols", default=None, help="Comma-separated override of the watchlist.")
     parser.add_argument("--no-telegram", action="store_true", help="Don't send a Telegram message even if configured.")
     parser.add_argument("--paper-dir", default=str(REPO_ROOT / "paper"), help="Where journal.csv/trades.csv/state.json live.")
+    parser.add_argument(
+        "--test-telegram",
+        action="store_true",
+        help="Send a short 'connection OK' test message using the configured TELEGRAM_BOT_TOKEN/"
+        "TELEGRAM_CHAT_ID and exit -- does not download data, touch state/journal, or run any part "
+        "of the daily job.",
+    )
     return parser.parse_args()
+
+
+TEST_TELEGRAM_MESSAGE = "Stockplayer test -- connection OK"
+
+
+def _send_test_telegram() -> int:
+    sent = telegram_module.send_message(
+        TEST_TELEGRAM_MESSAGE, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+    )
+    if sent:
+        print(f"[paper] test Telegram message sent: {TEST_TELEGRAM_MESSAGE!r}")
+        return 0
+    print("[paper] TELEGRAM_BOT_TOKEN and/or TELEGRAM_CHAT_ID not set -- nothing sent.")
+    return 1
 
 
 def _update_symbol_data(symbol: str, instrument_key: str, cache_dir: Path, dl_cfg: downloader.DownloaderConfig) -> pd.DataFrame | None:
@@ -91,6 +114,10 @@ def _compute_indicators(df: pd.DataFrame, signals_cfg) -> pd.DataFrame:
 
 def main() -> int:
     args = parse_args()
+
+    if args.test_telegram:
+        return _send_test_telegram()
+
     config_path = Path(args.config)
     paper_dir = Path(args.paper_dir)
 

@@ -8,7 +8,13 @@ on:
     # fires on every weekday and lets the script decide if there's anything
     # to do.
     - cron: "30 12 * * 1-5"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_telegram:
+        description: "Send a Telegram connectivity test message only (skips the daily job entirely)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -55,7 +61,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           UPSTOX_ACCESS_TOKEN: ${{ secrets.UPSTOX_ACCESS_TOKEN }}
-        run: python scripts/paper_daily.py
+          TEST_TELEGRAM: ${{ inputs.test_telegram }}
+        run: |
+          if [ "$TEST_TELEGRAM" = "true" ]; then
+            python scripts/paper_daily.py --test-telegram
+          else
+            python scripts/paper_daily.py
+          fi
 
       - name: Save candle cache
         uses: actions/cache/save@v4

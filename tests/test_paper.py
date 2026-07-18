@@ -318,6 +318,60 @@ def test_holiday_no_op_when_no_new_candle():
     assert paper_daily._should_skip(earlier_state, later_today) is False
 
 
+def test_test_telegram_sends_expected_message_and_reports_success(monkeypatch):
+    import paper_daily
+
+    sent_calls = []
+    monkeypatch.setattr(
+        paper_daily.telegram_module,
+        "send_message",
+        lambda text, bot_token, chat_id: sent_calls.append((text, bot_token, chat_id)) or True,
+    )
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "dummy-chat")
+
+    exit_code = paper_daily._send_test_telegram()
+
+    assert exit_code == 0
+    assert len(sent_calls) == 1
+    text, bot_token, chat_id = sent_calls[0]
+    assert text == paper_daily.TEST_TELEGRAM_MESSAGE == "Stockplayer test -- connection OK"
+    assert bot_token == "dummy-token"
+    assert chat_id == "dummy-chat"
+
+
+def test_test_telegram_reports_failure_when_secrets_missing(monkeypatch):
+    import paper_daily
+
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    # send_message itself no-ops (returns False) when secrets are missing --
+    # don't mock it here, exercise the real no-secrets-configured path.
+
+    exit_code = paper_daily._send_test_telegram()
+
+    assert exit_code == 1
+
+
+def test_main_dispatches_test_telegram_flag_before_touching_anything_else(monkeypatch):
+    # --test-telegram must short-circuit main() before any config/data/state
+    # work happens -- simulate this by making everything past that point
+    # raise, and confirming main() with --test-telegram never reaches it.
+    import paper_daily
+
+    monkeypatch.setattr(sys, "argv", ["paper_daily.py", "--test-telegram"])
+    monkeypatch.setattr(
+        paper_daily.telegram_module, "send_message", lambda *a, **k: True
+    )
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("main() did not short-circuit on --test-telegram")
+
+    monkeypatch.setattr(paper_daily.journal_module, "ensure_files", _boom)
+
+    assert paper_daily.main() == 0
+
+
 def test_fidelity_harness_catches_corrupted_journal_row():
     import verify_fidelity
 
