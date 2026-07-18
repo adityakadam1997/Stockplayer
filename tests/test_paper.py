@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from backtest import costs_delivery, swing_simulator
 from backtest.swing_simulator import SwingPortfolioConfig
+from paper import journal as journal_module
 from paper import state as state_module
 from paper.pipeline import run_daily_step
 from paper.state import PaperState
@@ -353,6 +354,73 @@ def test_fidelity_harness_catches_corrupted_journal_row():
     phantom["entry_timestamp"] = "2026-02-01T00:00:00+05:30"
     mismatches = verify_fidelity.diff_trades(ground_truth, [phantom])
     assert len(mismatches) == 2  # phantom trade missing from backtest AND the real one missing from paper
+
+
+def test_ensure_files_creates_header_only_csvs(tmp_path):
+    paper_dir = tmp_path / "paper"
+    journal_module.ensure_files(paper_dir)
+
+    for name, columns in [
+        ("journal.csv", journal_module.JOURNAL_COLUMNS),
+        ("trades.csv", journal_module.TRADE_COLUMNS),
+        ("run_log.csv", journal_module.RUN_LOG_COLUMNS),
+    ]:
+        path = paper_dir / name
+        assert path.exists()
+        with path.open() as f:
+            header = f.readline().strip().split(",")
+        assert header == columns
+
+    assert journal_module.read_journal_csv(paper_dir / "journal.csv") == []
+    assert journal_module.read_trades_csv(paper_dir / "trades.csv") == []
+    assert journal_module.read_run_log(paper_dir / "run_log.csv") == []
+
+
+def test_ensure_files_does_not_clobber_existing_data(tmp_path):
+    paper_dir = tmp_path / "paper"
+    journal_module.ensure_files(paper_dir)
+    journal_module.append_run_log(paper_dir / "run_log.csv", "2026-01-05")
+
+    # Calling ensure_files again (as every single invocation of
+    # paper_daily.py does) must be a pure no-op on files that already have
+    # real content.
+    journal_module.ensure_files(paper_dir)
+    assert journal_module.read_run_log(paper_dir / "run_log.csv") == [{"run_date": "2026-01-05"}]
+
+
+def test_zero_activity_first_run_leaves_git_addable_files(tmp_path):
+    # Reproduces exactly what broke the paper workflow's first real run:
+    # a day is processed, nothing fires (0 trades, possibly 0 candidates),
+    # and the workflow then does `git add paper/trades.csv` unconditionally.
+    # After the fix, that file must exist -- with a valid header and zero
+    # data rows -- even though append_trade_rows/append_journal_rows were
+    # both called with empty lists.
+    paper_dir = tmp_path / "paper"
+    journal_module.ensure_files(paper_dir)  # paper_daily.py calls this before anything else
+
+    journal_module.append_trade_rows(paper_dir / "trades.csv", [])
+    journal_module.append_journal_rows(paper_dir / "journal.csv", "2026-01-05", [])
+    journal_module.append_run_log(paper_dir / "run_log.csv", "2026-01-05")
+
+    assert (paper_dir / "trades.csv").exists()
+    assert (paper_dir / "journal.csv").exists()
+    assert (paper_dir / "run_log.csv").exists()
+    assert journal_module.read_trades_csv(paper_dir / "trades.csv") == []
+    assert journal_module.read_journal_csv(paper_dir / "journal.csv") == []
+    assert journal_module.read_run_log(paper_dir / "run_log.csv") == [{"run_date": "2026-01-05"}]
+
+    # The actual regression: `git add <path>` fails with "pathspec did not
+    # match any files" if and only if the path doesn't exist on disk.
+    import subprocess
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    result = subprocess.run(
+        ["git", "add", "paper/trades.csv", "paper/journal.csv", "paper/run_log.csv"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_load_state_missing_file_returns_fresh_default(tmp_path):
