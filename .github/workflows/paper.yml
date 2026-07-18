@@ -67,7 +67,12 @@ jobs:
         run: |
           git config user.name "paper-trading-bot"
           git config user.email "actions@github.com"
-          git add paper/journal.csv paper/trades.csv paper/state.json paper/run_log.csv
+          # -A (not a fixed file list): paper_daily.py's journal_module.ensure_files()
+          # guarantees journal.csv/trades.csv/run_log.csv exist from the first run
+          # onward regardless of activity, but -A is kept anyway as a second,
+          # independent safety net -- git add never fails on a missing pathspec
+          # this way even if that guarantee were ever violated.
+          git add -A paper/
           if git diff --cached --quiet; then
             echo "No paper/ changes to commit (market closed or already processed today)."
           else

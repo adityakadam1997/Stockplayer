@@ -66,6 +66,35 @@ def _append_rows(path: Path, columns: list[str], rows: list[dict]) -> None:
             writer.writerow(row)
 
 
+def _ensure_header_only(path: Path, columns: list[str]) -> None:
+    """Create ``path`` with just a header row if it doesn't exist yet --
+    idempotent, does nothing if the file (with any content) already exists."""
+    if path.exists():
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as f:
+        csv.DictWriter(f, fieldnames=columns).writeheader()
+
+
+def ensure_files(paper_dir: Path) -> None:
+    """Create ``journal.csv``, ``trades.csv``, and ``run_log.csv`` (header
+    row only) if they don't exist yet. A zero-activity day -- which is most
+    days, and is guaranteed on the very first run before any trade has ever
+    filled or exited -- would otherwise leave ``trades.csv`` (and possibly
+    ``journal.csv``, if literally no setup fired anywhere that day) absent
+    from disk entirely, since ``_append_rows`` is a no-op on an empty list.
+    That's exactly what broke the paper workflow's first real run: its
+    ``git add paper/trades.csv`` failed with "pathspec did not match any
+    files" because the file had genuinely never been created. Call this
+    unconditionally at the start of every ``paper_daily.py`` invocation
+    (before the holiday/no-op check) so the files always exist from the
+    first run onward, activity or not."""
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    _ensure_header_only(paper_dir / "journal.csv", JOURNAL_COLUMNS)
+    _ensure_header_only(paper_dir / "trades.csv", TRADE_COLUMNS)
+    _ensure_header_only(paper_dir / "run_log.csv", RUN_LOG_COLUMNS)
+
+
 def append_journal_rows(path: Path, run_date: str, trace: list[dict]) -> None:
     """``trace`` is ``strategy.swing_engine.generate_proposal_trace``'s
     output for one symbol/day -- one row per raw candidate."""

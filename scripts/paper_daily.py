@@ -94,6 +94,14 @@ def main() -> int:
     config_path = Path(args.config)
     paper_dir = Path(args.paper_dir)
 
+    # Guarantee journal.csv/trades.csv/run_log.csv exist (header-only if
+    # nothing's happened yet) before anything else runs, including before
+    # any FATAL-exit path below -- a zero-activity day (the common case,
+    # and always true on the very first run) would otherwise leave
+    # trades.csv absent from disk entirely, which is exactly what broke the
+    # workflow's `git add paper/trades.csv` step on its first real run.
+    journal_module.ensure_files(paper_dir)
+
     with config_path.open() as f:
         config = yaml.safe_load(f)
 

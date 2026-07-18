@@ -1,0 +1,1 @@
+symbol,setup_id,direction,signal_timestamp,entry_timestamp,entry_signal_price,entry_fill_price,stop_price,target_price,rr_ratio,condition_at_entry,acceptance_streak_at_entry,quantity,exit_timestamp,exit_signal_price,exit_fill_price,exit_reason,holding_days,total_costs,gross_pnl,net_pnl,r_multiple,notes
