@@ -1,0 +1,5 @@
+run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,target_price,rr_ratio,funnel_stage,notes
+2026-07-17,ICICIBANK,2026-07-17T00:00:00+05:30,setup1_discovery,long,1444.3,1418.99015,1428.0,0.0,invalid_geometry,"retest of band_upper_1 after accepted_above, target=session extreme high"
+2026-07-17,MARUTI,2026-07-17T00:00:00+05:30,setup1_discovery,long,13803.0,13693.150000000001,13845.0,0.38233955393719216,failed_trend_filter,"retest of band_upper_1 after accepted_above, target=session extreme high"
+2026-07-17,TCS,2026-07-17T00:00:00+05:30,setup4_bounce,long,2269.0,2213.99245,2224.751112285182,0.0,wide_band_guard,"bounce off vwap after touch, target=1st deviation band"
+2026-07-17,TCS,2026-07-17T00:00:00+05:30,setup1_discovery,long,2269.0,2213.99245,2228.0,0.0,invalid_geometry,"retest of band_upper_1 after accepted_above, target=session extreme high"

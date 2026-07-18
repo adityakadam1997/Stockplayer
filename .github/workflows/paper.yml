@@ -1,0 +1,76 @@
+name: Paper Trading Daily
+
+on:
+  schedule:
+    # Weekdays ~18:00 IST = 12:30 UTC. NSE holidays are handled by
+    # scripts/paper_daily.py itself (no new candle -> logs "market closed",
+    # exits 0, sends no Telegram message, commits nothing) -- this cron just
+    # fires on every weekday and lets the script decide if there's anything
+    # to do.
+    - cron: "30 12 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-trading-daily
+  cancel-in-progress: false
+
+jobs:
+  run-paper-daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore candle cache
+        # cache/*.parquet is gitignored (not committed by design -- it's
+        # regenerable, not an audit trail like paper/ is), so it has to be
+        # restored from Actions cache each run or every run would re-fetch
+        # full multi-year history for all 15 symbols. Harmless either way
+        # (data/downloader.download_symbol_daily_history is a single request
+        # per symbol even for years of daily bars) -- this just avoids the
+        # unnecessary re-fetch and the extra API load.
+        uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: paper-candle-cache-${{ github.run_id }}
+          restore-keys: |
+            paper-candle-cache-
+
+      - name: Run paper_daily.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          UPSTOX_ACCESS_TOKEN: ${{ secrets.UPSTOX_ACCESS_TOKEN }}
+        run: python scripts/paper_daily.py
+
+      - name: Save candle cache
+        uses: actions/cache/save@v4
+        with:
+          path: cache
+          key: paper-candle-cache-${{ github.run_id }}
+
+      - name: Commit journal/state changes
+        run: |
+          git config user.name "paper-trading-bot"
+          git config user.email "actions@github.com"
+          git add paper/journal.csv paper/trades.csv paper/state.json paper/run_log.csv
+          if git diff --cached --quiet; then
+            echo "No paper/ changes to commit (market closed or already processed today)."
+          else
+            git commit -m "Paper trading: $(date -u +%Y-%m-%d) run"
+            git push
+          fi

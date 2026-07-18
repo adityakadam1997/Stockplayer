@@ -130,6 +130,74 @@ Tests are fully offline — they exercise `data/`, `signals/`, `strategy/`, and
 `backtest/` against synthetic data, not the live Upstox API or the local
 `cache/`.
 
+## Phase 1: automated paper trading
+
+Cycle 3B's long-only, daily-bar, weekly-anchored-VWAP swing system got a
+pre-registered GO (see PR history). Phase 1 puts it into fully automated
+**paper** trading -- no broker orders, no order API, no live capital. A
+scheduled job runs once per NSE trading day, replays exactly what the
+system would do, and journals everything to the repo so the git history is
+the audit trail.
+
+```bash
+# Run one day manually (processes whatever the latest available trading
+# day is; idempotent -- safe to re-run, a second run the same day is a no-op)
+python scripts/paper_daily.py
+
+# Same, without attempting to send a Telegram message (prints it instead)
+python scripts/paper_daily.py --no-telegram
+
+# Diff the paper journal against a fresh backtest-engine replay -- the
+# Phase 1 pass/fail instrument. Exit code 1 on any mismatch.
+python scripts/verify_fidelity.py
+```
+
+`scripts/paper_daily.py` mirrors `backtest/swing_simulator.py`'s exits-then-
+entries daily loop one calendar day at a time (`paper/pipeline.py`), reusing
+`swing_simulator`'s own position-sizing/gap-fill/trade-closing helpers so
+the economics are computed by the exact same code as a backtest trade, not
+a second copy of it. Every candidate proposal (whatever setup produced it,
+whatever funnel stage it stopped at) is journaled to `paper/journal.csv`;
+every fill/exit with full cost/R-multiple economics goes to
+`paper/trades.csv`; `paper/state.json` holds the single source of truth for
+open positions, pending orders, and running equity. All three (plus
+`paper/run_log.csv`, used for the reliability metric) are **committed to
+the repo by the scheduled job** -- nothing here is gitignored.
+
+`.github/workflows/paper.yml` runs it on a weekday cron (~18:00 IST) via
+`workflow_dispatch`-triggerable GitHub Actions, and on Fridays also sends a
+weekly summary (trades that week, cumulative expectancy in R, funnel
+totals, reliability) and runs `scripts/verify_fidelity.py`, alerting loudly
+on any mismatch between the paper journal and a from-scratch backtest
+replay -- that fidelity match is the actual pass/fail criterion for this
+phase, not the P&L (~9 trades over 3 months is too few to judge edge on;
+see the PR body for the full set of pre-registered Phase 1 criteria).
+
+### Required GitHub Secrets
+
+| Secret | Required? | Purpose |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Optional | Bot token for daily/weekly notifications. Without it, the job runs and journals normally, it just doesn't send Telegram messages (`send_message` no-ops if either secret is missing). |
+| `TELEGRAM_CHAT_ID` | Optional | Chat/user ID the bot sends to. |
+| `UPSTOX_ACCESS_TOKEN` | Optional | The Upstox historical-candle API works without auth (see above); set this only if you have a token and want to use it. |
+
+No secret is strictly required for the workflow to run correctly -- without
+the Telegram ones, it just journals silently. `assets.upstox.com` (the
+instrument-key resolution source) was unreachable from the sandbox this was
+built in; `data/instrument_fallback.py` falls back to a hardcoded,
+individually-verified instrument-key map for 13 of the 15 watchlist symbols
+if that path fails (KOTAKBANK and BAJFINANCE could not be independently
+verified in that sandbox -- see the module docstring). Re-verify those two
+once running somewhere with normal internet access.
+
+### Required repo settings
+
+- **Settings -> Actions -> General -> Workflow permissions**: set to **"Read
+  and write permissions"** (or grant `contents: write` some other way) --
+  the workflow commits `paper/journal.csv`/`trades.csv`/`state.json`/
+  `run_log.csv` back to the repo every run that has a new trading day.
+  Without this, the final `git push` step fails.
+
 ## Repo layout
 
 ```
@@ -137,9 +205,10 @@ data/           instrument resolution, downloader, parquet storage
 signals/        session VWAP, deviation bands, market condition classifier
 strategy/       the four VWAP Wave System setups + the no-lookahead engine
 backtest/       cost model, candle-replay simulator, expectancy report
+paper/          Phase 1: paper-trading state/journal/telegram/daily-pipeline logic
 risk/           stub
 execution/      stub -- no order placement anywhere in this repo
-journal/        stub
+journal/        stub (unrelated to paper/ -- pre-dates Phase 1, still unused)
 scripts/        CLI entry points
 tests/          offline unit tests
 cache/          gitignored parquet cache
