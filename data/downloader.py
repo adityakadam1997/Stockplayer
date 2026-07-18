@@ -153,6 +153,28 @@ def download_symbol_daily_history(
     return df.reset_index(drop=True)
 
 
+def download_incremental_daily(
+    instrument_key: str,
+    since: pd.Timestamp,
+    config: DownloaderConfig,
+    end_date: dt.date | None = None,
+) -> pd.DataFrame:
+    """Daily-bar analogue of ``download_incremental`` -- fetch candles
+    strictly newer than ``since`` up to ``end_date`` (default today), one
+    request (no chunking needed for daily granularity, same as
+    ``download_symbol_daily_history``)."""
+    end_date = end_date or dt.date.today()
+    start_date = since.date()
+    if start_date > end_date:
+        return _candles_to_frame([])
+
+    candles = _request_chunk(instrument_key, "days", 1, start_date, end_date, config)
+    df = _candles_to_frame(candles)
+    df = df[df["timestamp"] > since]
+    df = df.drop_duplicates(subset="timestamp").sort_values("timestamp")
+    return df.reset_index(drop=True)
+
+
 def download_incremental(
     instrument_key: str,
     since: pd.Timestamp,

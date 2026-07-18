@@ -35,6 +35,7 @@ observed -- it doesn't prevent the gap itself).
 
 from __future__ import annotations
 
+import datetime as dt
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -163,11 +164,25 @@ def run_portfolio(
     strategy_cfg: StrategyConfig,
     cost_cfg: costs_delivery.DeliveryCostConfig,
     portfolio_cfg: SwingPortfolioConfig,
+    walk_start_date: dt.date | None = None,
 ) -> list[SwingTradeRecord]:
     """Replays every symbol's daily bars in one global, date-synchronized
     walk so ``max_concurrent_positions``/``max_positions_per_symbol`` can be
     enforced portfolio-wide. ``symbol_data`` values must already carry the
-    columns ``strategy.swing_engine.generate_proposals`` requires."""
+    columns ``strategy.swing_engine.generate_proposals`` requires.
+
+    ``walk_start_date`` (Phase 1 paper-trading fidelity harness, additive --
+    ``None`` preserves this function's exact prior behavior for every
+    existing caller): signals are still generated from the FULL history in
+    ``symbol_data`` (so weekly/monthly anchors and ``SessionState`` are
+    correctly warmed up), but the portfolio walk itself -- which calendar
+    dates are visited for entries/exits, and therefore which signals ever
+    get a chance to open a position -- only considers dates on or after
+    ``walk_start_date``, with ``open_positions`` starting empty there. This
+    lets a from-scratch batch replay reproduce exactly what a paper-trading
+    system starting with a clean, empty book on ``walk_start_date`` would
+    have done, without discarding the pre-``walk_start_date`` history that
+    the indicators and ``SessionState`` need for correct warm-up."""
     rows_by_symbol: dict[str, list] = {}
     index_by_date: dict[str, dict] = {}
     entries_by_fill_date: dict[str, dict] = {}
@@ -187,12 +202,16 @@ def run_portfolio(
 
         fill_map: dict = {}
         for signal_idx, proposal in proposals_by_signal_index.items():
+            if walk_start_date is not None and rows[signal_idx].timestamp.date() < walk_start_date:
+                continue  # signal generated before the walk starts -- paper trading never saw it
             fill_idx = signal_idx + 1
             if fill_idx < len(rows):  # drop signals with no next trading day to fill against
                 fill_map[rows[fill_idx].timestamp.date()] = (proposal, fill_idx)
         entries_by_fill_date[symbol] = fill_map
 
     all_dates = sorted({row.timestamp.date() for rows in rows_by_symbol.values() for row in rows})
+    if walk_start_date is not None:
+        all_dates = [d for d in all_dates if d >= walk_start_date]
 
     trades: list[SwingTradeRecord] = []
     open_positions: dict[str, dict] = {}

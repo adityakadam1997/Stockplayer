@@ -209,15 +209,35 @@ def _cost_viable(proposal: TradeProposal, cfg: StrategyConfig, cost_cfg: costs_d
     return estimated_cost <= cfg.cost_viability_max_pct * nominal_risk
 
 
+def _trace_row(proposal: TradeProposal, stage: str) -> dict:
+    """One diagnostic record for ``generate_proposal_trace`` (Phase 1's paper
+    journal) -- the funnel stage a single raw candidate reached, whatever its
+    fields looked like at that point (pre- or post-recomputation depending on
+    how far it got)."""
+    return {
+        "symbol": proposal.symbol,
+        "timestamp": proposal.timestamp,
+        "setup_id": proposal.setup_id,
+        "direction": proposal.direction,
+        "entry_price": proposal.entry_price,
+        "stop_price": proposal.stop_price,
+        "target_price": proposal.target_price,
+        "rr_ratio": proposal.rr_ratio,
+        "funnel_stage": stage,
+        "notes": proposal.notes,
+    }
+
+
 def _run_pipeline(
     df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs_delivery.DeliveryCostConfig
-) -> tuple[list[TradeProposal], dict[str, int], list[float]]:
+) -> tuple[list[TradeProposal], dict[str, int], list[float], list[dict]]:
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"df is missing required columns: {missing}")
 
     proposals: list[TradeProposal] = []
     valid_geometry_rr: list[float] = []
+    trace: list[dict] = []
     funnel = {
         "raw": 0,
         "after_trend_filter": 0,
@@ -245,15 +265,29 @@ def _run_pipeline(
         candidates += setup4_bounce.detect(row, state, transition, cfg, symbol)
 
         if _wide_band_guard_active(row, cfg):
+            for p in candidates:
+                if p.setup_id in _MEAN_REVERSION_SETUP_IDS:
+                    trace.append(_trace_row(p, "wide_band_guard"))
             candidates = [p for p in candidates if p.setup_id not in _MEAN_REVERSION_SETUP_IDS]
         funnel["raw"] += len(candidates)
 
-        candidates = [p for p in candidates if _trend_filter_ok(p, row)]
+        survivors: list[TradeProposal] = []
+        for p in candidates:
+            if _trend_filter_ok(p, row):
+                survivors.append(p)
+            else:
+                trace.append(_trace_row(p, "failed_trend_filter"))
+        candidates = survivors
         funnel["after_trend_filter"] += len(candidates)
 
-        pre_long_only_count = len(candidates)
-        candidates = _long_only_filter(candidates)
-        funnel["suppressed_shorts"] += pre_long_only_count - len(candidates)
+        survivors = []
+        for p in candidates:
+            if p.direction == LONG:
+                survivors.append(p)
+            else:
+                trace.append(_trace_row(p, "suppressed_short"))
+        funnel["suppressed_shorts"] += len(candidates) - len(survivors)
+        candidates = survivors
         funnel["after_long_only"] += len(candidates)
 
         recomputed: list[TradeProposal] = []
@@ -261,6 +295,7 @@ def _run_pipeline(
             new_p = _recompute_target(p, row)
             if new_p is None:
                 funnel["invalid_geometry"] += 1
+                trace.append(_trace_row(p, "invalid_geometry"))
             else:
                 recomputed.append(new_p)
         candidates = recomputed
@@ -269,17 +304,33 @@ def _run_pipeline(
         atr_value = getattr(row, ATR_COLUMN)
         candidates = [_apply_stop_floor(p, atr_value, cfg) for p in candidates]
         valid_geometry_rr.extend(p.rr_ratio for p in candidates)
-        candidates = [p for p in candidates if p.rr_ratio >= cfg.min_rr]
+
+        survivors = []
+        for p in candidates:
+            if p.rr_ratio >= cfg.min_rr:
+                survivors.append(p)
+            else:
+                trace.append(_trace_row(p, "failed_rr"))
+        candidates = survivors
         funnel["after_rr"] += len(candidates)
 
-        candidates = [p for p in candidates if _cost_viable(p, cfg, cost_cfg)]
+        survivors = []
+        for p in candidates:
+            if _cost_viable(p, cfg, cost_cfg):
+                survivors.append(p)
+            else:
+                trace.append(_trace_row(p, "failed_cost_viability"))
+        candidates = survivors
         funnel["after_cost_viability"] += len(candidates)
+
+        for p in candidates:
+            trace.append(_trace_row(p, "executed_pending"))
 
         proposals.extend(candidates)
 
         state = update_session_state(state, row, transition, cfg, period=week_period)
 
-    return proposals, funnel, valid_geometry_rr
+    return proposals, funnel, valid_geometry_rr, trace
 
 
 def generate_proposals(
@@ -290,7 +341,7 @@ def generate_proposals(
     an ``atr14`` column (``strategy.base.compute_atr(df, period=14)``), and a
     ``monthly_vwap`` column (``signals.vwap.compute_monthly_vwap``), sorted
     ascending by timestamp."""
-    proposals, _, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
+    proposals, _, _, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
     return proposals
 
 
@@ -304,7 +355,7 @@ def generate_proposals_with_funnel(
     after_cost_viability. Proposals returned are what survived all stages
     (pre next-day-fill / portfolio-capacity trimming, which happens in
     ``backtest.swing_simulator``)."""
-    proposals, funnel, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
+    proposals, funnel, _, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
     return proposals, funnel
 
 
@@ -315,4 +366,20 @@ def generate_proposals_with_diagnostics(
     values for every candidate that reached the valid-geometry stage
     (post stop-floor, pre R:R-filter) -- feeds the R:R distribution
     diagnostic."""
-    return _run_pipeline(df, symbol, cfg, cost_cfg)
+    proposals, funnel, valid_geometry_rr, _ = _run_pipeline(df, symbol, cfg, cost_cfg)
+    return proposals, funnel, valid_geometry_rr
+
+
+def generate_proposal_trace(
+    df: pd.DataFrame, symbol: str, cfg: StrategyConfig, cost_cfg: costs_delivery.DeliveryCostConfig
+) -> list[dict]:
+    """Phase 1 (paper trading): one diagnostic record per RAW candidate (from
+    any of the 4 setups, before the wide-band guard) showing exactly which
+    funnel stage it reached -- ``wide_band_guard`` / ``failed_trend_filter``
+    / ``suppressed_short`` / ``invalid_geometry`` / ``failed_rr`` /
+    ``failed_cost_viability`` / ``executed_pending``. This is strictly a
+    read-out of ``_run_pipeline``'s existing decisions (same function,
+    same call, zero behavior change) -- it does not alter what
+    ``generate_proposals`` returns."""
+    _, _, _, trace = _run_pipeline(df, symbol, cfg, cost_cfg)
+    return trace
