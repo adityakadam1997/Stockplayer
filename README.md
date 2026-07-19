@@ -185,10 +185,9 @@ No secret is strictly required for the workflow to run correctly -- without
 the Telegram ones, it just journals silently. `assets.upstox.com` (the
 instrument-key resolution source) was unreachable from the sandbox this was
 built in; `data/instrument_fallback.py` falls back to a hardcoded,
-individually-verified instrument-key map for 13 of the 15 watchlist symbols
-if that path fails (KOTAKBANK and BAJFINANCE could not be independently
-verified in that sandbox -- see the module docstring). Re-verify those two
-once running somewhere with normal internet access.
+individually-verified instrument-key map covering all 15 watchlist symbols
+if that path fails (KOTAKBANK and BAJFINANCE use their post-split ISINs --
+see the module docstring for how each was verified).
 
 ### Required repo settings
 

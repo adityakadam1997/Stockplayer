@@ -12,29 +12,19 @@ directly against the (separately reachable) ``api.upstox.com`` historical
 candle endpoint in this session -- a real request for that exact key
 returned real, recent OHLC data for that symbol.
 
-**13 of the 15 watchlist symbols are covered.** KOTAKBANK and BAJFINANCE
-could NOT be independently verified: every ISIN this session tried for them
-was rejected by the live API as "Invalid Instrument key", and every
-secondary source (NSE archives, Wikipedia, Moneycontrol, Screener) was also
-unreachable from this sandbox to cross-check the correct ISIN. Guessing an
-unverified financial identifier risks silently pulling a DIFFERENT
-company's data under the right symbol name -- worse than no fallback at
-all -- so those two are deliberately omitted here. They rely solely on the
-primary ``data.instruments`` path, which should work fine in the actual
-GitHub Actions runner (a normal internet host, not this sandbox).
-
-Also flagged for the record: the existing ``cache/KOTAKBANK_1d.parquet``
-and ``cache/BAJFINANCE_1d.parquet`` files (downloaded in an earlier, now-
-merged cycle) show price ranges that don't match either company's known
-real-world trading range for 2021-2026 (KOTAKBANK: Rs309-454 cached vs.
-Kotak Mahindra Bank's actual ~Rs1600-2200; BAJFINANCE: Rs528-1094 cached vs.
-Bajaj Finance's actual multi-thousand-rupee range even after its 2023
-split). This suggests those two symbols' historical cache may have been
-populated against the wrong instrument key at some point. Not fixed here --
-"no changes to strategy/signals/backtest logic" is this phase's explicit
-rule, and Phase 1 is a plumbing gate, not a data-quality audit -- but
-flagged prominently so a human can re-verify before trusting KOTAKBANK/
-BAJFINANCE results specifically.
+**All 15 watchlist symbols are covered.** KOTAKBANK and BAJFINANCE were
+initially omitted: every ISIN guessed for them in an earlier session was
+rejected by the live API as "Invalid Instrument key", and the previously
+cached price levels (KOTAKBANK ~Rs309-454, BAJFINANCE ~Rs528-1094) looked
+inconsistent with stale priors for both companies. That was a false alarm
+from outdated price expectations, not a data-quality bug: both companies
+had share splits, and the correct, current ISINs are KOTAKBANK
+INE237A01036 and BAJFINANCE INE296A01032 -- each independently verified
+live against ``api.upstox.com``'s historical-candle endpoint, and each
+returns the exact same close prices already sitting in the cache for the
+overlapping dates (e.g. both report 2026-07-10 identically), confirming
+the existing cached history was correct all along under the post-split
+ISIN. The earlier flag calling that cached data suspicious is retracted.
 """
 
 from __future__ import annotations
@@ -59,6 +49,8 @@ VERIFIED_INSTRUMENT_KEYS: dict[str, str] = {
     "BHARTIARTL": "NSE_EQ|INE397D01024",
     "MARUTI": "NSE_EQ|INE585B01010",
     "HINDUNILVR": "NSE_EQ|INE030A01027",
+    "KOTAKBANK": "NSE_EQ|INE237A01036",  # post-split ISIN, verified live -- see module docstring
+    "BAJFINANCE": "NSE_EQ|INE296A01032",  # post-split ISIN, verified live -- see module docstring
 }
 
 
