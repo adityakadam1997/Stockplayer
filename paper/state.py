@@ -24,6 +24,12 @@ class PaperState:
     trade_count: int = 0
     paper_start_date: dt.date | None = None
     last_processed_date: dt.date | None = None
+    # The last calendar date (Asia/Kolkata) a weekly summary was actually
+    # sent -- independent of last_processed_date, since the summary decision
+    # runs every invocation regardless of whether that day had a new trading
+    # candle to process. Drives both the "already sent today" idempotency
+    # guard and the >7-day catch-up check in scripts/paper_daily.py.
+    last_weekly_summary_date: dt.date | None = None
     # symbol -> open-position dict (see `position_to_dict`/`position_from_dict`)
     open_positions: dict = field(default_factory=dict)
     # symbol -> pending-order dict (a TradeProposal, serialized)
@@ -97,6 +103,7 @@ def state_to_dict(state: PaperState) -> dict:
         "trade_count": state.trade_count,
         "paper_start_date": _date_to_str(state.paper_start_date),
         "last_processed_date": _date_to_str(state.last_processed_date),
+        "last_weekly_summary_date": _date_to_str(state.last_weekly_summary_date),
         "open_positions": state.open_positions,
         "pending_orders": state.pending_orders,
     }
@@ -109,6 +116,7 @@ def state_from_dict(d: dict) -> PaperState:
         trade_count=d.get("trade_count", 0),
         paper_start_date=_str_to_date(d.get("paper_start_date")),
         last_processed_date=_str_to_date(d.get("last_processed_date")),
+        last_weekly_summary_date=_str_to_date(d.get("last_weekly_summary_date")),
         open_positions=d.get("open_positions", {}),
         pending_orders=d.get("pending_orders", {}),
     )

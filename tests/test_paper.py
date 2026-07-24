@@ -13,6 +13,7 @@ git-committed paper journal.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import sys
 from pathlib import Path
@@ -370,6 +371,187 @@ def test_main_dispatches_test_telegram_flag_before_touching_anything_else(monkey
     monkeypatch.setattr(paper_daily.journal_module, "ensure_files", _boom)
 
     assert paper_daily.main() == 0
+
+
+# ---------------------------------------------------------------------------
+# Weekly summary: explicit IST Friday detection + >7-day catch-up
+#
+# The bug this section covers: the first Friday weekly summary never
+# arrived, even though daily runs were green all week. The old code only
+# ever checked `today.weekday() == 4` *inside* the branch that runs when a
+# new trading candle was actually processed -- so if that Friday's run
+# happened to be a no-op (data not yet published, a holiday, any reason
+# `_should_skip` fires), the Friday check was never even reached, and there
+# was no mechanism to catch up later. `_weekly_summary_decision` is now a
+# pure function, evaluated on every run regardless of whether a candle was
+# processed, against the real Asia/Kolkata calendar date.
+# ---------------------------------------------------------------------------
+
+
+def test_weekly_summary_fires_on_friday_ist():
+    import paper_daily
+
+    friday = pd.Timestamp("2026-07-24").date()
+    assert friday.weekday() == 4  # sanity: 2026-07-24 is genuinely a Friday
+
+    state = PaperState(capital=300_000.0, paper_start_date=pd.Timestamp("2026-07-01").date())
+    should_send, reason = paper_daily._weekly_summary_decision(state, friday)
+    assert should_send is True
+    assert "Friday" in reason
+
+
+def test_weekly_summary_does_not_double_send_same_day():
+    import paper_daily
+
+    friday = pd.Timestamp("2026-07-24").date()
+    state = PaperState(capital=300_000.0, last_weekly_summary_date=friday)
+
+    should_send, reason = paper_daily._weekly_summary_decision(state, friday)
+    assert should_send is False
+    assert "already sent today" in reason
+
+
+def test_weekly_summary_skipped_on_non_friday_within_window():
+    import paper_daily
+
+    wednesday = pd.Timestamp("2026-07-22").date()
+    assert wednesday.weekday() == 2
+    state = PaperState(
+        capital=300_000.0,
+        paper_start_date=pd.Timestamp("2026-07-20").date(),
+        last_weekly_summary_date=pd.Timestamp("2026-07-17").date(),  # 5 days before wednesday
+    )
+
+    should_send, reason = paper_daily._weekly_summary_decision(state, wednesday)
+    assert should_send is False
+    assert "not due yet" in reason
+
+
+def test_weekly_summary_catches_up_after_missed_friday():
+    # This is the exact failure scenario: the last summary went out over a
+    # week ago (e.g. a skipped/no-op Friday), and today is NOT a Friday --
+    # the very next run must still send it rather than waiting for the
+    # following Friday.
+    import paper_daily
+
+    last_sent = pd.Timestamp("2026-07-17").date()  # a Friday, 8 days before the date below
+    monday = pd.Timestamp("2026-07-25").date()
+    assert monday.weekday() == 5 or True  # not asserting exact weekday, just that it's != Friday
+    assert monday.weekday() != 4
+    assert (monday - last_sent).days >= paper_daily.WEEKLY_SUMMARY_CATCHUP_DAYS
+
+    state = PaperState(capital=300_000.0, last_weekly_summary_date=last_sent)
+    should_send, reason = paper_daily._weekly_summary_decision(state, monday)
+    assert should_send is True
+    assert "catch-up" in reason
+
+
+def test_weekly_summary_catches_up_from_paper_start_when_never_sent():
+    import paper_daily
+
+    paper_start = pd.Timestamp("2026-07-01").date()
+    much_later = pd.Timestamp("2026-07-20").date()  # well over 7 days later, still not a Friday check needed
+    assert much_later.weekday() != 4
+
+    state = PaperState(capital=300_000.0, paper_start_date=paper_start, last_weekly_summary_date=None)
+    should_send, reason = paper_daily._weekly_summary_decision(state, much_later)
+    assert should_send is True
+    assert "catch-up" in reason
+    assert "never sent" in reason
+
+
+def test_weekly_summary_not_due_when_paper_trading_just_started():
+    import paper_daily
+
+    paper_start = pd.Timestamp("2026-07-20").date()
+    two_days_later = pd.Timestamp("2026-07-22").date()
+    assert two_days_later.weekday() != 4
+
+    state = PaperState(capital=300_000.0, paper_start_date=paper_start, last_weekly_summary_date=None)
+    should_send, reason = paper_daily._weekly_summary_decision(state, two_days_later)
+    assert should_send is False
+
+
+def test_weekly_summary_not_due_before_paper_trading_has_ever_started():
+    import paper_daily
+
+    state = PaperState(capital=300_000.0, paper_start_date=None, last_weekly_summary_date=None)
+    should_send, reason = paper_daily._weekly_summary_decision(state, pd.Timestamp("2026-07-24").date())
+    # 2026-07-24 IS a Friday, but with no paper_start_date at all there's
+    # nothing to summarize yet -- Friday alone still wins per the documented
+    # rule (Friday always fires), so this specifically checks the NON-Friday
+    # "never started" case doesn't crash or misfire.
+    tuesday = pd.Timestamp("2026-07-21").date()
+    assert tuesday.weekday() != 4
+    should_send, reason = paper_daily._weekly_summary_decision(state, tuesday)
+    assert should_send is False
+    assert "hasn't started" in reason
+
+
+def test_ist_today_uses_asia_kolkata_not_utc(monkeypatch):
+    # Explicit timezone check: freeze "now" to a UTC instant that falls on a
+    # DIFFERENT calendar date in UTC vs Asia/Kolkata (23:30 UTC == 05:00 IST
+    # the next day) and confirm _ist_today() reports the IST date, not the
+    # UTC (or naive/runner-local) one.
+    import paper_daily
+
+    utc_instant = dt.datetime(2026, 7, 23, 23, 30, tzinfo=dt.timezone.utc)
+
+    class _FrozenDateTime(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                raise AssertionError("_ist_today() must call datetime.now(IST), not the naive/local now()")
+            return utc_instant.astimezone(tz)
+
+    monkeypatch.setattr(paper_daily.dt, "datetime", _FrozenDateTime)
+
+    result = paper_daily._ist_today()
+    assert result == pd.Timestamp("2026-07-24").date()  # IST date, one day ahead of the UTC date (07-23)
+
+
+def test_weekly_summary_state_field_round_trips(tmp_path):
+    import paper_daily
+    from paper import state as state_module
+
+    state = PaperState(
+        capital=300_000.0,
+        paper_start_date=pd.Timestamp("2026-07-01").date(),
+        last_weekly_summary_date=pd.Timestamp("2026-07-17").date(),
+    )
+    path = tmp_path / "state.json"
+    state_module.save_state(state, path)
+    reloaded = state_module.load_state(path)
+    assert reloaded.last_weekly_summary_date == state.last_weekly_summary_date
+
+    # And a state.json predating this field (no key at all) must load fine.
+    with path.open() as f:
+        raw = json.load(f)
+    del raw["last_weekly_summary_date"]
+    with path.open("w") as f:
+        json.dump(raw, f)
+    reloaded_old_schema = state_module.load_state(path)
+    assert reloaded_old_schema.last_weekly_summary_date is None
+
+
+def test_telegram_send_failure_is_caught_not_raised(monkeypatch):
+    # The other half of the original bug: even when the weekly-summary
+    # decision correctly fires, a Telegram-side failure must never raise
+    # (which would crash main() before it could save state or let the
+    # workflow's commit step run) -- it must be caught, logged, and
+    # reported back as a clean False.
+    import requests
+
+    from paper import telegram as telegram_module
+
+    class _FailingResponse:
+        def raise_for_status(self):
+            raise requests.HTTPError("403 Forbidden: bot was blocked by the user")
+
+    monkeypatch.setattr(telegram_module.requests, "post", lambda *a, **k: _FailingResponse())
+
+    result = telegram_module.send_message("hello", "dummy-token", "dummy-chat")
+    assert result is False  # did NOT raise
 
 
 def test_fidelity_harness_catches_corrupted_journal_row():

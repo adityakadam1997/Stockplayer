@@ -165,13 +165,19 @@ open positions, pending orders, and running equity. All three (plus
 the repo by the scheduled job** -- nothing here is gitignored.
 
 `.github/workflows/paper.yml` runs it on a weekday cron (~18:00 IST) via
-`workflow_dispatch`-triggerable GitHub Actions, and on Fridays also sends a
-weekly summary (trades that week, cumulative expectancy in R, funnel
-totals, reliability) and runs `scripts/verify_fidelity.py`, alerting loudly
-on any mismatch between the paper journal and a from-scratch backtest
-replay -- that fidelity match is the actual pass/fail criterion for this
-phase, not the P&L (~9 trades over 3 months is too few to judge edge on;
-see the PR body for the full set of pre-registered Phase 1 criteria).
+`workflow_dispatch`-triggerable GitHub Actions, and every run also decides
+whether to send a weekly summary (trades that week, cumulative expectancy
+in R, funnel totals, reliability) and run `scripts/verify_fidelity.py`,
+alerting loudly on any mismatch between the paper journal and a
+from-scratch backtest replay -- that fidelity match is the actual pass/fail
+criterion for this phase, not the P&L (~9 trades over 3 months is too few
+to judge edge on; see the PR body for the full set of pre-registered
+Phase 1 criteria). The weekly-summary decision is evaluated every run
+(not just on days a new trading candle showed up) against the real current
+Asia/Kolkata calendar date: it fires on Friday, or as a catch-up if it's
+been 7+ days since the last one sent -- so a holiday, a data-availability
+lag, or a transient Telegram failure on a given Friday can never silently
+lose that week's report (see `scripts/paper_daily.py::_weekly_summary_decision`).
 
 ### Required GitHub Secrets
 

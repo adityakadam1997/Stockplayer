@@ -16,15 +16,24 @@ Steps (see paper/ package docstrings for the detailed design rationale):
 4. Generate new proposals from today's close -> pending orders for tomorrow.
 5. Journal everything to paper/journal.csv + paper/trades.csv + paper/state.json.
 6. Notify Telegram (silent on a no-activity day).
+
+Weekly summary: decided every run (not just on days a new candle was
+processed) against the real current Asia/Kolkata calendar date -- fires on
+Friday, or as a catch-up if it's been >= WEEKLY_SUMMARY_CATCHUP_DAYS since
+the last one sent, so a holiday, a data-lag no-op, or a failed Telegram
+send on a given Friday can never permanently lose that week's report. See
+_weekly_summary_decision.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import os
 import subprocess
 import sys
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yaml
@@ -36,7 +45,7 @@ from data import downloader, instrument_fallback, store
 from paper import journal as journal_module
 from paper import telegram as telegram_module
 from paper.pipeline import run_daily_step
-from paper.state import load_state, save_state
+from paper.state import PaperState, load_state, save_state
 from signals import condition, vwap
 from signals.config import load_signals_config
 from strategy import swing_engine
@@ -45,6 +54,8 @@ from strategy.base import compute_atr, load_strategy_config
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TIMEFRAME = "swing"
 INTERVAL_LABEL = "1d"
+IST = ZoneInfo("Asia/Kolkata")
+WEEKLY_SUMMARY_CATCHUP_DAYS = 7
 
 
 def parse_args() -> argparse.Namespace:
@@ -97,6 +108,52 @@ def _should_skip(state, candidate_today) -> bool:
     Both manifest identically: the latest available date across every
     symbol is not strictly newer than ``state.last_processed_date``."""
     return state.last_processed_date is not None and candidate_today <= state.last_processed_date
+
+
+def _ist_today() -> dt.date:
+    """The real, current calendar date in Asia/Kolkata -- deliberately NOT
+    derived from candle data or the runner's local/UTC clock. The weekly
+    summary's Friday check and >7-day catch-up window both need to reason
+    about actual elapsed wall-clock time, including on a day when no new
+    trading candle was processed at all (an NSE holiday, a data-lag no-op,
+    or any other reason the daily pipeline was a no-op) -- tying either
+    check to candle-derived dates would make them silently stop firing
+    whenever the daily pipeline itself doesn't advance."""
+    return dt.datetime.now(IST).date()
+
+
+def _weekly_summary_decision(state, ist_today: dt.date) -> tuple[bool, str]:
+    """Decides whether to send/re-check the weekly summary on this run, and
+    why -- pure function, no I/O, so it's directly testable. Two firing
+    conditions, evaluated against the real IST calendar date so this works
+    identically whether or not today's run processed a new trading candle:
+
+    1. It's Friday (Asia/Kolkata) and a summary hasn't already gone out
+       today (same-day re-runs must not resend).
+    2. Catch-up: it's been >= WEEKLY_SUMMARY_CATCHUP_DAYS days since the
+       last summary was sent (or since paper trading started, if none has
+       ever been sent) -- so a Friday that's silently skipped (a holiday,
+       a data-availability lag, a prior Telegram failure, a missed cron
+       firing) can never permanently lose that week's report; the very
+       next run of any kind catches it up.
+    """
+    last = state.last_weekly_summary_date
+    if last == ist_today:
+        return False, f"already sent today ({ist_today.isoformat()})"
+
+    if ist_today.weekday() == 4:
+        return True, "Friday (Asia/Kolkata)"
+
+    baseline = last or state.paper_start_date
+    if baseline is None:
+        return False, "not due yet (paper trading hasn't started)"
+
+    days_since = (ist_today - baseline).days
+    if days_since >= WEEKLY_SUMMARY_CATCHUP_DAYS:
+        last_label = last.isoformat() if last else "never sent"
+        return True, f"catch-up -- {days_since} days since last summary ({last_label})"
+
+    return False, f"not due yet ({days_since} days since last summary/start; next Friday or day-{WEEKLY_SUMMARY_CATCHUP_DAYS} catch-up)"
 
 
 def _compute_indicators(df: pd.DataFrame, signals_cfg) -> pd.DataFrame:
@@ -173,6 +230,7 @@ def main() -> int:
 
     state_path = paper_dir / "state.json"
     state = load_state(state_path, capital=strategy_cfg.capital)
+    ist_today = _ist_today()
 
     latest_dates = [df["timestamp"].max().date() for df in symbol_data.values()]
     candidate_today = min(latest_dates)
@@ -182,60 +240,73 @@ def main() -> int:
             f"[paper] no new trading day beyond {state.last_processed_date} "
             f"(latest available: {candidate_today}) -- market closed or already processed today. No-op."
         )
-        return 0
-
-    today = candidate_today
-    if state.paper_start_date is None:
-        state.paper_start_date = today
-        print(f"[paper] first-ever run -- paper trading starts {today}.")
-
-    print(f"[paper] processing {today}...")
-    result = run_daily_step(symbol_data, state, strategy_cfg, cost_cfg, portfolio_cfg, today, sorted(watchlist))
-
-    journal_module.append_trade_rows(paper_dir / "trades.csv", result.trades)
-    journal_module.append_journal_rows(paper_dir / "journal.csv", today.isoformat(), result.journal_trace)
-    journal_module.append_run_log(paper_dir / "run_log.csv", today.isoformat())
-    save_state(result.state, state_path)
-
-    print(f"[paper] {len(result.fills)} fills, {len(result.trades)} exits, {len(result.new_pending)} new pending orders.")
-    for t in result.trades:
-        print(f"  EXIT  {t.symbol} {t.exit_reason} @ {t.exit_fill_price:.2f} -> {t.r_multiple:+.2f}R (Rs{t.net_pnl:+,.0f})")
-    for f in result.fills:
-        print(f"  FILL  {f['symbol']} {f['direction']} x{f['quantity']} @ Rs{f['entry_fill_price']:.2f}")
-    for p in result.new_pending:
-        print(f"  PENDING  {p['symbol']} {p['direction']} {p['setup_id']} R:R {p['rr_ratio']:.2f} -> fills next session")
-    print(f"[paper] equity: Rs{result.state.equity:,.0f}")
-
-    message = telegram_module.format_daily_message(
-        run_date=today.isoformat(),
-        fills=result.fills,
-        exits=[journal_module.trade_record_to_row(t) for t in result.trades],
-        new_pending=result.new_pending,
-        equity=result.state.equity,
-    )
-    if message and not args.no_telegram:
-        sent = telegram_module.send_message(
-            message, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
-        )
-        print(f"[paper] Telegram message sent: {sent}")
-    elif message:
-        print("[paper] --no-telegram set; message that would have been sent:")
-        print(message)
     else:
-        print("[paper] no activity today -- no Telegram message.")
+        today = candidate_today
+        if state.paper_start_date is None:
+            state.paper_start_date = today
+            print(f"[paper] first-ever run -- paper trading starts {today}.")
 
-    if today.weekday() == 4:  # Friday
-        _run_weekly_summary(paper_dir, today, args.no_telegram)
+        print(f"[paper] processing {today}...")
+        result = run_daily_step(symbol_data, state, strategy_cfg, cost_cfg, portfolio_cfg, today, sorted(watchlist))
+        state = result.state
 
+        journal_module.append_trade_rows(paper_dir / "trades.csv", result.trades)
+        journal_module.append_journal_rows(paper_dir / "journal.csv", today.isoformat(), result.journal_trace)
+        journal_module.append_run_log(paper_dir / "run_log.csv", today.isoformat())
+
+        print(f"[paper] {len(result.fills)} fills, {len(result.trades)} exits, {len(result.new_pending)} new pending orders.")
+        for t in result.trades:
+            print(f"  EXIT  {t.symbol} {t.exit_reason} @ {t.exit_fill_price:.2f} -> {t.r_multiple:+.2f}R (Rs{t.net_pnl:+,.0f})")
+        for f in result.fills:
+            print(f"  FILL  {f['symbol']} {f['direction']} x{f['quantity']} @ Rs{f['entry_fill_price']:.2f}")
+        for p in result.new_pending:
+            print(f"  PENDING  {p['symbol']} {p['direction']} {p['setup_id']} R:R {p['rr_ratio']:.2f} -> fills next session")
+        print(f"[paper] equity: Rs{state.equity:,.0f}")
+
+        message = telegram_module.format_daily_message(
+            run_date=today.isoformat(),
+            fills=result.fills,
+            exits=[journal_module.trade_record_to_row(t) for t in result.trades],
+            new_pending=result.new_pending,
+            equity=state.equity,
+        )
+        if message and not args.no_telegram:
+            sent = telegram_module.send_message(
+                message, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+            )
+            print(f"[paper] Telegram daily message: {'sent' if sent else 'FAILED (see [telegram] log line above, or no secrets configured)'}")
+        elif message:
+            print("[paper] --no-telegram set; message that would have been sent:")
+            print(message)
+        else:
+            print("[paper] no activity today -- no Telegram message.")
+
+    # Weekly summary + fidelity check: evaluated on EVERY run, including a
+    # no-op day above, and decided by the real IST calendar date rather than
+    # by whether a new trading candle happened to be processed today -- see
+    # _weekly_summary_decision's docstring for why (this is exactly the gap
+    # that let a Friday's summary silently never fire).
+    should_send, reason = _weekly_summary_decision(state, ist_today)
+    if should_send:
+        print(f"[paper] weekly summary: SENT ({reason})")
+        state = _run_weekly_summary(paper_dir, ist_today, args.no_telegram, state)
+    else:
+        print(f"[paper] weekly summary: skipped ({reason})")
+
+    save_state(state, state_path)
     return 0
 
 
-def _run_weekly_summary(paper_dir: Path, today, no_telegram: bool) -> None:
-    print("[paper] Friday -- running weekly summary + fidelity check...")
+def _run_weekly_summary(paper_dir: Path, ist_today: dt.date, no_telegram: bool, state: PaperState) -> PaperState:
+    """Sends the weekly summary and runs the fidelity check. Returns
+    ``state`` with ``last_weekly_summary_date`` updated to ``ist_today`` --
+    callers must persist the returned state (this function doesn't save it
+    itself, so ``main()`` can do a single ``save_state`` at the end)."""
+    print("[paper] running weekly summary + fidelity check...")
     all_trades = journal_module.read_trades_csv(paper_dir / "trades.csv")
-    week_start = today - pd.Timedelta(days=today.weekday())
+    week_start = ist_today - dt.timedelta(days=ist_today.weekday())
     trades_this_week = [
-        t for t in all_trades if week_start <= pd.Timestamp(t["exit_timestamp"]).date() <= today
+        t for t in all_trades if week_start <= pd.Timestamp(t["exit_timestamp"]).date() <= ist_today
     ]
 
     if all_trades:
@@ -251,21 +322,24 @@ def _run_weekly_summary(paper_dir: Path, today, no_telegram: bool) -> None:
     run_dates = [pd.Timestamp(r["run_date"]).date() for r in run_log]
     days_expected = len(pd.bdate_range(min(run_dates), max(run_dates))) if run_dates else 0
 
-    equity_state = load_state(paper_dir / "state.json")
-
     summary = telegram_module.format_weekly_summary(
         week_label=f"week of {week_start.isoformat()}",
         trades_this_week=trades_this_week,
         cumulative_expectancy_r=cumulative_expectancy_r,
         cumulative_trade_count=len(all_trades),
-        equity=equity_state.equity,
+        equity=state.equity,
         funnel_totals=funnel_totals,
         days_run=days_run,
         days_expected=days_expected,
     )
     print(summary)
     if not no_telegram:
-        telegram_module.send_message(summary, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID"))
+        sent = telegram_module.send_message(
+            summary, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+        )
+        print(f"[paper] weekly summary Telegram send: {'sent' if sent else 'FAILED (see [telegram] log line above, or no secrets configured)'}")
+    else:
+        print("[paper] --no-telegram set; weekly summary above would have been sent.")
 
     fidelity_script = REPO_ROOT / "scripts" / "verify_fidelity.py"
     result = subprocess.run(
@@ -278,6 +352,9 @@ def _run_weekly_summary(paper_dir: Path, today, no_telegram: bool) -> None:
         print("[paper] FIDELITY CHECK FAILED -- see output above.")
     else:
         print("[paper] fidelity check passed.")
+
+    state.last_weekly_summary_date = ist_today
+    return state
 
 
 if __name__ == "__main__":
