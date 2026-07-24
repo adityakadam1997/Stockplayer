@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Phase 1: the daily paper-trading job. Idempotent -- safe to re-run any
-number of times on the same day; only the first run on a genuinely new
-trading day does anything.
+number of times on the same day; only genuinely new trading days do
+anything. If more than one trading day's candle became available since the
+last run (Upstox's EOD data publishes with a lag that isn't always exactly
+one day), every pending day is walked through IN ORDER, one at a time --
+never just the latest -- so no day's fills/exits/signals are silently
+skipped. See ``_pending_trading_dates``.
 
     python scripts/paper_daily.py
     python scripts/paper_daily.py --no-telegram   # for local/manual runs
@@ -101,13 +105,42 @@ def _update_symbol_data(symbol: str, instrument_key: str, cache_dir: Path, dl_cf
     return store.read_symbol(symbol, 1440, cache_dir, interval_label=INTERVAL_LABEL)
 
 
-def _should_skip(state, candidate_today) -> bool:
-    """True if there's no new trading day to process -- either an NSE
-    holiday (no symbol got a fresher candle than what's already cached) or
-    the job has already fully processed ``candidate_today`` earlier today.
-    Both manifest identically: the latest available date across every
-    symbol is not strictly newer than ``state.last_processed_date``."""
-    return state.last_processed_date is not None and candidate_today <= state.last_processed_date
+def _pending_trading_dates(symbol_data: dict[str, pd.DataFrame], state: PaperState) -> list[dt.date]:
+    """Every trading date that still needs to be walked through
+    ``run_daily_step``, in ascending order -- NOT just the single latest
+    one. Upstox's EOD data publishes with a lag (empirically confirmed:
+    every real cron run so far has processed the PRIOR day's candle, not
+    the day it actually ran on), and that lag isn't constant -- some runs
+    see it catch up by more than one day at once. A single-date design
+    (``today = min(latest_dates)``) silently SKIPS any earlier day that
+    became available in the same fetch: exactly what happened to
+    2026-07-22 in production, whose candle arrived bundled together with
+    2026-07-23's on the very next run, and was never walked through on its
+    own -- no fills/exits were ever checked against its bar, and it's
+    missing from run_log.csv entirely. Processing every pending date here,
+    oldest first, is what ``scripts/verify_fidelity.py``'s day-by-day-vs-
+    batch-replay guarantee actually requires: the day-by-day walk must
+    visit every trading day in order, with nothing skipped, or it stops
+    being equivalent to the batch backtest engine by construction.
+
+    Dates only count once EVERY symbol in ``symbol_data`` has a candle for
+    them (mirrors the existing conservative min-across-symbols philosophy,
+    now applied to a range instead of a single date) -- a lone symbol
+    lagging behind (a transient per-symbol download failure) holds back
+    only the dates it's actually missing, not ones it already has.
+
+    On the very first-ever run (``state.last_processed_date is None``),
+    paper trading intentionally starts with a clean, empty book on the
+    latest available date -- it does not replay all of history as
+    individual days. See ``paper/pipeline.py``'s module docstring for why."""
+    if not symbol_data:
+        return []
+    common_dates = set.intersection(*(set(df["timestamp"].dt.date) for df in symbol_data.values()))
+    if not common_dates:
+        return []
+    if state.last_processed_date is None:
+        return [max(common_dates)]
+    return sorted(d for d in common_dates if d > state.last_processed_date)
 
 
 def _ist_today() -> dt.date:
@@ -167,6 +200,63 @@ def _compute_indicators(df: pd.DataFrame, signals_cfg) -> pd.DataFrame:
     df = compute_atr(df, period=14)
     df[swing_engine.ROLLING_HIGH_COLUMN] = swing_engine.compute_prior_n_day_high(df)
     return df
+
+
+def _process_one_day(
+    symbol_data: dict[str, pd.DataFrame],
+    state: PaperState,
+    strategy_cfg,
+    cost_cfg,
+    portfolio_cfg,
+    watchlist: list[str],
+    paper_dir: Path,
+    today: dt.date,
+    no_telegram: bool,
+) -> PaperState:
+    """Runs exactly one trading day through the pipeline and journals it --
+    factored out of ``main()`` so a run with multiple pending days (a
+    backfill after a data-lag gap) can call this once per day, in order,
+    instead of skipping straight to the latest."""
+    if state.paper_start_date is None:
+        state.paper_start_date = today
+        print(f"[paper] first-ever run -- paper trading starts {today}.")
+
+    print(f"[paper] processing {today}...")
+    result = run_daily_step(symbol_data, state, strategy_cfg, cost_cfg, portfolio_cfg, today, watchlist)
+    state = result.state
+
+    journal_module.append_trade_rows(paper_dir / "trades.csv", result.trades)
+    journal_module.append_journal_rows(paper_dir / "journal.csv", today.isoformat(), result.journal_trace)
+    journal_module.append_run_log(paper_dir / "run_log.csv", today.isoformat())
+
+    print(f"[paper] {len(result.fills)} fills, {len(result.trades)} exits, {len(result.new_pending)} new pending orders.")
+    for t in result.trades:
+        print(f"  EXIT  {t.symbol} {t.exit_reason} @ {t.exit_fill_price:.2f} -> {t.r_multiple:+.2f}R (Rs{t.net_pnl:+,.0f})")
+    for f in result.fills:
+        print(f"  FILL  {f['symbol']} {f['direction']} x{f['quantity']} @ Rs{f['entry_fill_price']:.2f}")
+    for p in result.new_pending:
+        print(f"  PENDING  {p['symbol']} {p['direction']} {p['setup_id']} R:R {p['rr_ratio']:.2f} -> fills next session")
+    print(f"[paper] equity: Rs{state.equity:,.0f}")
+
+    message = telegram_module.format_daily_message(
+        run_date=today.isoformat(),
+        fills=result.fills,
+        exits=[journal_module.trade_record_to_row(t) for t in result.trades],
+        new_pending=result.new_pending,
+        equity=state.equity,
+    )
+    if message and not no_telegram:
+        sent = telegram_module.send_message(
+            message, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+        )
+        print(f"[paper] Telegram daily message: {'sent' if sent else 'FAILED (see [telegram] log line above, or no secrets configured)'}")
+    elif message:
+        print("[paper] --no-telegram set; message that would have been sent:")
+        print(message)
+    else:
+        print("[paper] no activity today -- no Telegram message.")
+
+    return state
 
 
 def main() -> int:
@@ -232,54 +322,23 @@ def main() -> int:
     state = load_state(state_path, capital=strategy_cfg.capital)
     ist_today = _ist_today()
 
-    latest_dates = [df["timestamp"].max().date() for df in symbol_data.values()]
-    candidate_today = min(latest_dates)
+    pending_dates = _pending_trading_dates(symbol_data, state)
 
-    if _should_skip(state, candidate_today):
+    if not pending_dates:
         print(
-            f"[paper] no new trading day beyond {state.last_processed_date} "
-            f"(latest available: {candidate_today}) -- market closed or already processed today. No-op."
+            f"[paper] no new trading day beyond {state.last_processed_date} -- "
+            "market closed or already processed today. No-op."
         )
     else:
-        today = candidate_today
-        if state.paper_start_date is None:
-            state.paper_start_date = today
-            print(f"[paper] first-ever run -- paper trading starts {today}.")
-
-        print(f"[paper] processing {today}...")
-        result = run_daily_step(symbol_data, state, strategy_cfg, cost_cfg, portfolio_cfg, today, sorted(watchlist))
-        state = result.state
-
-        journal_module.append_trade_rows(paper_dir / "trades.csv", result.trades)
-        journal_module.append_journal_rows(paper_dir / "journal.csv", today.isoformat(), result.journal_trace)
-        journal_module.append_run_log(paper_dir / "run_log.csv", today.isoformat())
-
-        print(f"[paper] {len(result.fills)} fills, {len(result.trades)} exits, {len(result.new_pending)} new pending orders.")
-        for t in result.trades:
-            print(f"  EXIT  {t.symbol} {t.exit_reason} @ {t.exit_fill_price:.2f} -> {t.r_multiple:+.2f}R (Rs{t.net_pnl:+,.0f})")
-        for f in result.fills:
-            print(f"  FILL  {f['symbol']} {f['direction']} x{f['quantity']} @ Rs{f['entry_fill_price']:.2f}")
-        for p in result.new_pending:
-            print(f"  PENDING  {p['symbol']} {p['direction']} {p['setup_id']} R:R {p['rr_ratio']:.2f} -> fills next session")
-        print(f"[paper] equity: Rs{state.equity:,.0f}")
-
-        message = telegram_module.format_daily_message(
-            run_date=today.isoformat(),
-            fills=result.fills,
-            exits=[journal_module.trade_record_to_row(t) for t in result.trades],
-            new_pending=result.new_pending,
-            equity=state.equity,
-        )
-        if message and not args.no_telegram:
-            sent = telegram_module.send_message(
-                message, os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+        if len(pending_dates) > 1:
+            print(
+                f"[paper] {len(pending_dates)} trading days pending ({pending_dates[0]} through "
+                f"{pending_dates[-1]}) -- backfilling each one in order, not just the latest."
             )
-            print(f"[paper] Telegram daily message: {'sent' if sent else 'FAILED (see [telegram] log line above, or no secrets configured)'}")
-        elif message:
-            print("[paper] --no-telegram set; message that would have been sent:")
-            print(message)
-        else:
-            print("[paper] no activity today -- no Telegram message.")
+        for today in pending_dates:
+            state = _process_one_day(
+                symbol_data, state, strategy_cfg, cost_cfg, portfolio_cfg, sorted(watchlist), paper_dir, today, args.no_telegram
+            )
 
     # Weekly summary + fidelity check: evaluated on EVERY run, including a
     # no-op day above, and decided by the real IST calendar date rather than
