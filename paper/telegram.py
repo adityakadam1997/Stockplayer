@@ -1,8 +1,14 @@
 """Telegram notifications for the paper-trading daily job. Message
 formatting is pure (no network) and separately testable; ``send_message``
-is the only function that actually talks to the network, and does nothing
-(returns ``False``) if no token/chat id is configured -- so the daily job
-runs fine, just silently, without secrets set (e.g. a local manual run).
+is the only function that actually talks to the network, and never raises:
+it returns ``False`` if no token/chat id is configured (e.g. a local manual
+run) AND if the actual HTTP call fails (network error, bad token, wrong
+chat id, Telegram-side error, timeout) -- printing the specific reason
+either way. A transient Telegram outage must never crash the paper-trading
+job or block whatever else that run still needs to do (journal writes,
+the day's git commit) -- it should just be a clearly logged, non-fatal
+"send failed" rather than an uncaught exception that takes the whole
+process down with it.
 """
 
 from __future__ import annotations
@@ -16,8 +22,12 @@ def send_message(text: str, bot_token: str | None, chat_id: str | None, timeout:
     if not bot_token or not chat_id:
         return False
     url = f"{TELEGRAM_API_BASE}/bot{bot_token}/sendMessage"
-    response = requests.post(url, json={"chat_id": chat_id, "text": text}, timeout=timeout)
-    response.raise_for_status()
+    try:
+        response = requests.post(url, json={"chat_id": chat_id, "text": text}, timeout=timeout)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        print(f"[telegram] send_message failed: {exc}")
+        return False
     return True
 
 
