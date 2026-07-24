@@ -156,7 +156,12 @@ python scripts/verify_fidelity.py
 entries daily loop one calendar day at a time (`paper/pipeline.py`), reusing
 `swing_simulator`'s own position-sizing/gap-fill/trade-closing helpers so
 the economics are computed by the exact same code as a backtest trade, not
-a second copy of it. Every candidate proposal (whatever setup produced it,
+a second copy of it. Upstox's EOD data publishes with a lag that isn't
+always exactly one day, so a run can find more than one trading day's
+candle newly available at once -- every pending day is walked through in
+order, oldest first (`_pending_trading_dates`), never skipping straight to
+the latest, since a skipped day means its fills/exits/signals were never
+checked against its own bar. Every candidate proposal (whatever setup produced it,
 whatever funnel stage it stopped at) is journaled to `paper/journal.csv`;
 every fill/exit with full cost/R-multiple economics goes to
 `paper/trades.csv`; `paper/state.json` holds the single source of truth for

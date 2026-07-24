@@ -297,8 +297,9 @@ def test_state_json_round_trip(tmp_path):
 def test_holiday_no_op_when_no_new_candle():
     # Exercises the actual guard paper_daily.main() calls: an NSE holiday
     # (no symbol's cache advanced past the prior run) and an accidental
-    # same-day re-run both look identical -- candidate_today isn't strictly
-    # newer than state.last_processed_date -- and both must be a no-op.
+    # same-day re-run both look identical -- no date past
+    # state.last_processed_date exists in any symbol's data -- and both
+    # must be a no-op (empty pending-dates list).
     import paper_daily
 
     symbol_data, dates = _two_symbol_history()
@@ -306,17 +307,107 @@ def test_holiday_no_op_when_no_new_candle():
     candidate_today = min(latest_dates)
 
     already_processed_state = PaperState(capital=300_000.0, last_processed_date=candidate_today)
-    assert paper_daily._should_skip(already_processed_state, candidate_today) is True
-
-    holiday_state = PaperState(capital=300_000.0, last_processed_date=candidate_today)  # no fresher candle appeared
-    assert paper_daily._should_skip(holiday_state, candidate_today) is True
+    assert paper_daily._pending_trading_dates(symbol_data, already_processed_state) == []
 
     fresh_state = PaperState(capital=300_000.0, last_processed_date=None)
-    assert paper_daily._should_skip(fresh_state, candidate_today) is False
+    assert paper_daily._pending_trading_dates(symbol_data, fresh_state) == [candidate_today]
 
     earlier_state = PaperState(capital=300_000.0, last_processed_date=pd.Timestamp(dates[0]).date())
     later_today = pd.Timestamp(dates[-1]).date()
-    assert paper_daily._should_skip(earlier_state, later_today) is False
+    pending = paper_daily._pending_trading_dates(symbol_data, earlier_state)
+    assert pending != []
+    assert pending[-1] == later_today
+
+
+# ---------------------------------------------------------------------------
+# Multi-day backfill: Upstox's EOD data publishes with a lag that isn't
+# always exactly one day. A single-date design that only ever looks at
+# `min(latest_dates)` silently skips any earlier day that becomes available
+# bundled together with a later one in the same incremental fetch -- this
+# is exactly what happened to 2026-07-22 in production (its candle arrived
+# alongside 2026-07-23's on the next run, and was never walked through on
+# its own). _pending_trading_dates must return EVERY missing day, in order,
+# not just the newest.
+# ---------------------------------------------------------------------------
+
+
+def test_pending_trading_dates_returns_every_day_not_just_the_latest():
+    import paper_daily
+
+    symbol_data, dates = _two_symbol_history()
+    all_dates = [pd.Timestamp(d).date() for d in dates]
+
+    # Simulate the production gap: nothing processed since dates[0], but the
+    # cache now has several more days beyond it -- every one of them is
+    # pending, not just the newest.
+    state = PaperState(capital=300_000.0, last_processed_date=all_dates[0])
+    pending = paper_daily._pending_trading_dates(symbol_data, state)
+
+    # Precisely: every common trading date strictly after last_processed_date,
+    # in ascending order, with none skipped.
+    common_dates = set.intersection(*(set(df["timestamp"].dt.date) for df in symbol_data.values()))
+    expected = sorted(d for d in common_dates if d > all_dates[0])
+    assert pending == expected
+    assert len(pending) > 1  # the actual point: more than one day was pending
+
+
+def test_pending_trading_dates_only_counts_dates_common_to_every_symbol():
+    import paper_daily
+
+    symbol_data, dates = _two_symbol_history()
+    all_dates = [pd.Timestamp(d).date() for d in dates]
+
+    # AAA lags behind BBB by dropping its very last cached row -- the
+    # lagging symbol's missing date must hold back only itself, not corrupt
+    # the whole pending list (BBB's extra date shouldn't appear either,
+    # since it isn't common to both symbols yet).
+    truncated = dict(symbol_data)
+    truncated["AAA"] = symbol_data["AAA"].iloc[:-1].reset_index(drop=True)
+
+    state = PaperState(capital=300_000.0, last_processed_date=all_dates[-3])
+    pending = paper_daily._pending_trading_dates(truncated, state)
+
+    assert all_dates[-1] not in pending  # AAA doesn't have this date yet
+    assert pending == [all_dates[-2]]
+
+
+def test_multi_day_backfill_processes_every_day_via_process_one_day(tmp_path):
+    # End-to-end-ish: run _process_one_day in a loop over a multi-day
+    # pending list (as main() now does) and confirm every day actually got
+    # walked -- not just journaled as "latest", but each with its own
+    # run_log entry, matching what a real day-by-day walk requires for
+    # fidelity with the batch simulator.
+    import paper_daily
+
+    symbol_data, dates = _two_symbol_history()
+    watchlist = sorted(symbol_data.keys())
+    cfg = _permissive_cfg()
+    portfolio_cfg = SwingPortfolioConfig(time_stop_days=100)
+    paper_dir = tmp_path / "paper"
+    journal_module.ensure_files(paper_dir)
+
+    # NOT a first-ever run (that intentionally only ever takes the single
+    # latest date -- a clean slate, not a full-history replay): paper
+    # trading already started at dates[0], and a gap accumulated several
+    # trading days beyond it since the last real run.
+    paper_start = pd.Timestamp(dates[0]).date()
+    state = PaperState(capital=300_000.0, paper_start_date=paper_start, last_processed_date=paper_start)
+    pending = paper_daily._pending_trading_dates(symbol_data, state)
+    assert len(pending) >= 3  # sanity: this fixture has enough days to matter
+
+    # Force through every pending day, exactly like main()'s loop -- into an
+    # isolated tmp_path, never the real repo's paper/ directory.
+    for today in pending:
+        state = paper_daily._process_one_day(
+            symbol_data, state, cfg, _ZERO_SLIPPAGE_COST_CFG, portfolio_cfg, watchlist,
+            paper_dir, today, True,
+        )
+
+    run_log = journal_module.read_run_log(paper_dir / "run_log.csv")
+    logged_dates = {r["run_date"] for r in run_log}
+    assert logged_dates == {d.isoformat() for d in pending}  # EVERY pending day got its own run_log entry
+    assert state.last_processed_date == pending[-1]
+    assert state.paper_start_date == paper_start  # unchanged -- paper trading had already started
 
 
 def test_test_telegram_sends_expected_message_and_reports_success(monkeypatch):
