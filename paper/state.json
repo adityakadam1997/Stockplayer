@@ -1,10 +1,24 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-07-23",
-  "last_weekly_summary_date": "2026-07-24",
+  "last_processed_date": "2026-07-24",
+  "last_weekly_summary_date": "2026-07-27",
   "open_positions": {},
   "paper_start_date": "2026-07-17",
-  "pending_orders": {},
+  "pending_orders": {
+    "KOTAKBANK": {
+      "acceptance_streak_at_entry": 1,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_price": 384.75,
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "rr_ratio": 2.451476793248953,
+      "setup_id": "setup1_discovery",
+      "stop_price": 372.90000000000003,
+      "symbol": "KOTAKBANK",
+      "target_price": 413.8,
+      "timestamp": "2026-07-24T00:00:00+05:30"
+    }
+  },
   "realized_pnl": 0.0,
   "trade_count": 0
 }
