@@ -25,3 +25,5 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-07-24,SBIN,2026-07-24T00:00:00+05:30,setup1_discovery,short,1015.0,1018.3088999999999,1006.5,2.5688295203845106,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-07-24,TATAMOTORS,2026-07-24T00:00:00+05:30,setup1_discovery,short,323.8,325.912875,323.8,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-07-24,TCS,2026-07-24T00:00:00+05:30,setup3_return,long,2254.3,2203.99745,2236.533516012149,0.0,invalid_geometry,"primary: retest of the broken band from inside, holds, toward vwap"
+2026-07-29,MARUTI,2026-07-29T00:00:00+05:30,setup1_discovery,long,13948.0,13558.0,14598.0,1.6666666666666667,executed_pending,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
+2026-07-29,SBIN,2026-07-29T00:00:00+05:30,setup1_discovery,short,1013.7,1020.7101,1008.3,0.7703171138785634,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
