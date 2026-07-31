@@ -1,7 +1,7 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-07-29",
-  "last_weekly_summary_date": "2026-07-30",
+  "last_processed_date": "2026-07-30",
+  "last_weekly_summary_date": "2026-07-31",
   "open_positions": {
     "KOTAKBANK": {
       "acceptance_streak_at_entry": 1,
@@ -18,22 +18,38 @@
       "symbol": "KOTAKBANK",
       "target_price": 413.8,
       "timestamp": "2026-07-24T00:00:00+05:30"
-    }
-  },
-  "paper_start_date": "2026-07-17",
-  "pending_orders": {
+    },
     "MARUTI": {
       "acceptance_streak_at_entry": 2,
       "condition_at_entry": "accepted_above",
       "direction": "long",
+      "entry_fill": 13943.1817,
       "entry_price": 13948.0,
+      "entry_timestamp": "2026-07-30T00:00:00+05:30",
       "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "quantity": 7,
       "rr_ratio": 1.6666666666666667,
       "setup_id": "setup1_discovery",
       "stop_price": 13558.0,
       "symbol": "MARUTI",
       "target_price": 14598.0,
       "timestamp": "2026-07-29T00:00:00+05:30"
+    }
+  },
+  "paper_start_date": "2026-07-17",
+  "pending_orders": {
+    "KOTAKBANK": {
+      "acceptance_streak_at_entry": 2,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_price": 389.4,
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "rr_ratio": 1.6024653312788908,
+      "setup_id": "setup1_discovery",
+      "stop_price": 379.66499999999996,
+      "symbol": "KOTAKBANK",
+      "target_price": 405.0,
+      "timestamp": "2026-07-30T00:00:00+05:30"
     }
   },
   "realized_pnl": 0.0,
