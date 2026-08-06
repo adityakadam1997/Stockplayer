@@ -1,7 +1,7 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-08-04",
-  "last_weekly_summary_date": "2026-08-05",
+  "last_processed_date": "2026-08-05",
+  "last_weekly_summary_date": "2026-08-06",
   "open_positions": {
     "KOTAKBANK": {
       "acceptance_streak_at_entry": 1,
