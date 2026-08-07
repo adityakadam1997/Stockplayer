@@ -15,6 +15,32 @@ signals:
   acceptance_candles: 3       # consecutive candles required for "accepted"
   value_area_band: 1          # which band defines the value area boundary
 
+strategy:
+  min_rr: 1.5                    # every trade must have reward >= this x risk at entry, else skipped
+  stop_buffer_pct: 0.05          # buffer beyond stop reference, as a % of price
+  setup2_vwap_cross_count: 2     # min VWAP crossings this session for setup 2's rotation/balance filter
+  wide_band_guard_pct: 1.5       # if (band_upper_1 - band_lower_1)/vwap exceeds this %, suppress setups 2 & 4
+  setup3_fallback_allowed: false # if true, setup 3 may also enter on the break-back-inside candle itself
+  vwap_touch_tolerance_pct: 0.05 # setup 4: how close price must get to VWAP to count as a "touch"
+  no_entry_before: "09:30"       # no entries in the first 15 minutes of the session
+  no_entry_after: "14:45"        # no new entries this late -- not enough time to work before square-off
+  force_close_at: "15:15"        # all open positions closed at this candle's close
+
+costs:
+  brokerage_per_order: 20        # flat rupees per executed order (entry + exit = 2 orders/trade)
+  stt_sell_side_pct: 0.025       # STT on intraday equity, sell side only, as a %
+  transaction_charges_pct: 0.005 # exchange + SEBI fees + stamp duty, bundled, per side, as a %
+  gst_pct: 18                    # GST on (brokerage + transaction charges), as a %
+  slippage_mode: ticks           # "ticks" | "percentage" -- how entry/target fills slip against us
+  slippage_ticks: 1              # ticks of slippage when slippage_mode is "ticks"
+  tick_size: 0.05                # rupees per tick
+  slippage_pct: 0.02             # slippage as a % of price when slippage_mode is "percentage"
+  stop_slippage_pct: 0.05        # stop-loss fills specifically slip this much worse (stops slip in fast markets)
+
+backtest:
+  capital: 100000                # starting capital, rupees
+  risk_pct: 0.5                  # risk per trade, as a % of starting capital (fixed, non-compounding sizing)
+
 watchlist:
   - RELIANCE
   - HDFCBANK

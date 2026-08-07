@@ -1,1 +1,1 @@
-"""Strategy layer -- stub, built in Weekend 3."""
+"""VWAP Wave System: the four trade setups and the engine that runs them."""
