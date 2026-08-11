@@ -1,0 +1,9 @@
+{
+  "symbol": "DIXON",
+  "oos_trades": 8,
+  "oos_expectancy_r": -0.7275095551534487,
+  "oos_profit_factor": 0.3023932164302678,
+  "oos_cost_risk_avg_pct": 7.058753718717605,
+  "coverage_label": "2021-08-09..2026-08-10",
+  "tier": "fails cost-viability or insufficient valid trades"
+}

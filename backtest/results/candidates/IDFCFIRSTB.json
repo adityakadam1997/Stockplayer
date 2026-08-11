@@ -1,0 +1,9 @@
+{
+  "symbol": "IDFCFIRSTB",
+  "oos_trades": 3,
+  "oos_expectancy_r": -0.6909539924986318,
+  "oos_profit_factor": 0.12498188902901786,
+  "oos_cost_risk_avg_pct": 8.024187470959253,
+  "coverage_label": "2021-08-09..2026-08-10",
+  "tier": "fails cost-viability or insufficient valid trades"
+}

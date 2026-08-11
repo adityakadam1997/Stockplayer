@@ -1,0 +1,9 @@
+{
+  "symbol": "BIRLANU",
+  "oos_trades": 0,
+  "oos_expectancy_r": 0.0,
+  "oos_profit_factor": NaN,
+  "oos_cost_risk_avg_pct": 0.0,
+  "coverage_label": "2021-08-09..2026-08-10",
+  "tier": "fails cost-viability or insufficient valid trades"
+}

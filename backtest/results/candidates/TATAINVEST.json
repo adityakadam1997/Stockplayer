@@ -1,0 +1,9 @@
+{
+  "symbol": "TATAINVEST",
+  "oos_trades": 6,
+  "oos_expectancy_r": -0.26674619049810544,
+  "oos_profit_factor": 0.7253394023446764,
+  "oos_cost_risk_avg_pct": 8.182953880400975,
+  "coverage_label": "2021-08-09..2026-08-10",
+  "tier": "fails cost-viability or insufficient valid trades"
+}

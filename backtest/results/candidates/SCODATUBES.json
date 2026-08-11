@@ -1,0 +1,9 @@
+{
+  "symbol": "SCODATUBES",
+  "oos_trades": 1,
+  "oos_expectancy_r": -0.7626900346020702,
+  "oos_profit_factor": 0.0,
+  "oos_cost_risk_avg_pct": 5.3107075333572045,
+  "coverage_label": "2025-06-04..2026-08-10 (LIMITED)",
+  "tier": "fails cost-viability or insufficient valid trades"
+}

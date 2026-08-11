@@ -1,0 +1,9 @@
+{
+  "symbol": "TANLA",
+  "oos_trades": 8,
+  "oos_expectancy_r": -0.5454661344659133,
+  "oos_profit_factor": 0.39669990551699275,
+  "oos_cost_risk_avg_pct": 5.791354830761251,
+  "coverage_label": "2021-08-09..2026-08-10",
+  "tier": "fails cost-viability or insufficient valid trades"
+}

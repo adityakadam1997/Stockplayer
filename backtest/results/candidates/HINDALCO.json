@@ -1,0 +1,9 @@
+{
+  "symbol": "HINDALCO",
+  "oos_trades": 5,
+  "oos_expectancy_r": -0.09352562309802842,
+  "oos_profit_factor": 0.7405774516505949,
+  "oos_cost_risk_avg_pct": 7.525613927600746,
+  "coverage_label": "2021-08-09..2026-08-10",
+  "tier": "marginal -- thin sample or borderline cost/risk"
+}
