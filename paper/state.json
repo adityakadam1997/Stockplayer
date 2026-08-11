@@ -1,24 +1,8 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-08-07",
-  "last_weekly_summary_date": "2026-08-10",
+  "last_processed_date": "2026-08-10",
+  "last_weekly_summary_date": "2026-08-11",
   "open_positions": {
-    "KOTAKBANK": {
-      "acceptance_streak_at_entry": 1,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_fill": 386.1158,
-      "entry_price": 384.75,
-      "entry_timestamp": "2026-07-27T00:00:00+05:30",
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "quantity": 253,
-      "rr_ratio": 2.451476793248953,
-      "setup_id": "setup1_discovery",
-      "stop_price": 372.90000000000003,
-      "symbol": "KOTAKBANK",
-      "target_price": 413.8,
-      "timestamp": "2026-07-24T00:00:00+05:30"
-    },
     "MARUTI": {
       "acceptance_streak_at_entry": 2,
       "condition_at_entry": "accepted_above",
@@ -38,6 +22,6 @@
   },
   "paper_start_date": "2026-07-17",
   "pending_orders": {},
-  "realized_pnl": 0.0,
-  "trade_count": 0
+  "realized_pnl": 1595.0740974874623,
+  "trade_count": 1
 }
