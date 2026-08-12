@@ -1,11 +1,11 @@
 # OLAELEC -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2024-08-09 to 2026-08-10 (496 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2024-08-09 to 2026-08-11 (497 trading days).
 
 ## IS/OOS split
 - In-sample: 2024-08-09 to 2026-01-02
-- Out-of-sample: 2026-01-03 to 2026-08-10
+- Out-of-sample: 2026-01-03 to 2026-08-11
 
 ## In-sample results
 - Trades: 6
@@ -33,5 +33,5 @@ OLAELEC   38                  28                 18               10            
 ## Cost/risk ratio of executed trades (out-of-sample)
 (no executed trades)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: insufficient data -- zero OOS trades, not tested
 

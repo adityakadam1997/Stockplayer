@@ -1,17 +1,17 @@
 # IIFL -- candidate vetting report
 
 ## Data coverage
-2021-08-09 to 2026-08-10 (1241 trading days).
+2021-08-09 to 2026-08-11 (1242 trading days).
 
 ## IS/OOS split
-- In-sample: 2021-08-09 to 2025-02-09
-- Out-of-sample: 2025-02-10 to 2026-08-10
+- In-sample: 2021-08-09 to 2025-02-10
+- Out-of-sample: 2025-02-11 to 2026-08-11
 
 ## In-sample results
 - Trades: 19
 - Win rate: 36.8%
-- Expectancy: +0.245R
-- Profit factor: 1.41
+- Expectancy: +0.229R
+- Profit factor: 1.37
 - Max drawdown: Rs-14,290
 - Avg holding days: 6.3
 

@@ -1,11 +1,11 @@
 # LLOYDSENT -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2024-10-17 to 2026-08-10 (449 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2024-10-17 to 2026-08-11 (450 trading days).
 
 ## IS/OOS split
-- In-sample: 2024-10-17 to 2026-01-22
-- Out-of-sample: 2026-01-23 to 2026-08-10
+- In-sample: 2024-10-17 to 2026-01-23
+- Out-of-sample: 2026-01-24 to 2026-08-11
 
 ## In-sample results
 - Trades: 9
@@ -33,5 +33,5 @@ LLOYDSENT   32                  23                 16                7          
 ## Cost/risk ratio of executed trades (out-of-sample)
 (no executed trades)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: insufficient data -- zero OOS trades, not tested
 

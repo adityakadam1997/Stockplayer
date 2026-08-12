@@ -1,11 +1,11 @@
 # RATNAVEER -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2023-09-11 to 2026-08-10 (722 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2023-09-11 to 2026-08-11 (723 trading days).
 
 ## IS/OOS split
-- In-sample: 2023-09-11 to 2025-09-24
-- Out-of-sample: 2025-09-25 to 2026-08-10
+- In-sample: 2023-09-11 to 2025-09-25
+- Out-of-sample: 2025-09-26 to 2026-08-11
 
 ## In-sample results
 - Trades: 4
@@ -33,5 +33,5 @@ RATNAVEER   54                  41                 27               14          
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=3  mean=5.3%  median=5.1%  min=5.0%  max=5.8%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 

@@ -1,11 +1,11 @@
 # IONEXCHANG -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2022-02-22 to 2026-08-10 (1106 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2022-02-22 to 2026-08-11 (1107 trading days).
 
 ## IS/OOS split
-- In-sample: 2022-02-22 to 2025-04-07
-- Out-of-sample: 2025-04-08 to 2026-08-10
+- In-sample: 2022-02-22 to 2025-04-08
+- Out-of-sample: 2025-04-09 to 2026-08-11
 
 ## In-sample results
 - Trades: 10
@@ -33,5 +33,5 @@ IONEXCHANG   94                  78                 57               21         
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=1  mean=5.3%  median=5.3%  min=5.3%  max=5.3%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 

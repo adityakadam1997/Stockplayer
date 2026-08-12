@@ -1,11 +1,11 @@
 # SHAILY -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2022-04-04 to 2026-08-10 (1079 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2022-04-04 to 2026-08-11 (1080 trading days).
 
 ## IS/OOS split
-- In-sample: 2022-04-04 to 2025-04-19
-- Out-of-sample: 2025-04-20 to 2026-08-10
+- In-sample: 2022-04-04 to 2025-04-20
+- Out-of-sample: 2025-04-21 to 2026-08-11
 
 ## In-sample results
 - Trades: 10

@@ -1,11 +1,11 @@
 # PPLPHARMA -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2022-10-19 to 2026-08-10 (944 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2022-10-19 to 2026-08-11 (945 trading days).
 
 ## IS/OOS split
 - In-sample: 2022-10-19 to 2025-06-18
-- Out-of-sample: 2025-06-19 to 2026-08-10
+- Out-of-sample: 2025-06-19 to 2026-08-11
 
 ## In-sample results
 - Trades: 3
@@ -33,5 +33,5 @@ PPLPHARMA   80                  59                 38               21          
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=2  mean=6.3%  median=6.3%  min=4.4%  max=8.2%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 

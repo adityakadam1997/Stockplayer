@@ -4,6 +4,6 @@
   "oos_expectancy_r": -1.1919252507811797,
   "oos_profit_factor": 0.0,
   "oos_cost_risk_avg_pct": 6.276469881215388,
-  "coverage_label": "2021-08-09..2026-08-10",
-  "tier": "fails cost-viability or insufficient valid trades"
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "fails cost-viability or negative expectancy"
 }

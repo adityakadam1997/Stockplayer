@@ -1,11 +1,11 @@
 # TMCV -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2025-11-12 to 2026-08-10 (184 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2025-11-12 to 2026-08-11 (185 trading days).
 
 ## IS/OOS split
 - In-sample: 2025-11-12 to 2026-05-20
-- Out-of-sample: 2026-05-21 to 2026-08-10
+- Out-of-sample: 2026-05-21 to 2026-08-11
 
 ## In-sample results
 - Trades: 0
@@ -33,5 +33,5 @@ symbol  raw  after_trend_filter  suppressed_shorts  after_long_only  invalid_geo
 ## Cost/risk ratio of executed trades (out-of-sample)
 (no executed trades)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: insufficient data -- zero OOS trades, not tested
 

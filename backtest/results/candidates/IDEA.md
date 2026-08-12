@@ -1,19 +1,19 @@
 # IDEA -- candidate vetting report
 
 ## Data coverage
-2021-08-09 to 2026-08-10 (1241 trading days).
+2021-08-09 to 2026-08-11 (1242 trading days).
 
 ## IS/OOS split
-- In-sample: 2021-08-09 to 2025-02-09
-- Out-of-sample: 2025-02-10 to 2026-08-10
+- In-sample: 2021-08-09 to 2025-02-10
+- Out-of-sample: 2025-02-11 to 2026-08-11
 
 ## In-sample results
 - Trades: 8
 - Win rate: 0.0%
-- Expectancy: -0.960R
+- Expectancy: -1.067R
 - Profit factor: 0.00
-- Max drawdown: Rs-20,118
-- Avg holding days: 4.6
+- Max drawdown: Rs-22,681
+- Avg holding days: 4.8
 
 ## Out-of-sample results
 - Trades: 4

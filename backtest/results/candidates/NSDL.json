@@ -4,6 +4,6 @@
   "oos_expectancy_r": 0.0,
   "oos_profit_factor": NaN,
   "oos_cost_risk_avg_pct": 0.0,
-  "coverage_label": "2025-08-06..2026-08-10 (LIMITED)",
-  "tier": "fails cost-viability or insufficient valid trades"
+  "coverage_label": "2025-08-06..2026-08-11 (LIMITED)",
+  "tier": "insufficient data -- zero OOS trades, not tested"
 }

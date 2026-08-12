@@ -1,11 +1,11 @@
 # KPL -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2026-04-20 to 2026-08-10 (78 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2026-04-20 to 2026-08-11 (79 trading days).
 
 ## IS/OOS split
-- In-sample: 2026-04-20 to 2026-07-06
-- Out-of-sample: 2026-07-07 to 2026-08-10
+- In-sample: 2026-04-20 to 2026-07-07
+- Out-of-sample: 2026-07-08 to 2026-08-11
 
 ## In-sample results
 - Trades: 0
@@ -33,5 +33,5 @@ symbol  raw  after_trend_filter  suppressed_shorts  after_long_only  invalid_geo
 ## Cost/risk ratio of executed trades (out-of-sample)
 (no executed trades)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: insufficient data -- zero OOS trades, not tested
 

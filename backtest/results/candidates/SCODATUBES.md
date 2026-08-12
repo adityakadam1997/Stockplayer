@@ -1,11 +1,11 @@
 # SCODATUBES -- candidate vetting report
 
 ## Data coverage
-**LIMITED HISTORY** -- less than 5 years available: 2025-06-04 to 2026-08-10 (294 trading days).
+**LIMITED HISTORY** -- less than 5 years available: 2025-06-04 to 2026-08-11 (295 trading days).
 
 ## IS/OOS split
-- In-sample: 2025-06-04 to 2026-04-01
-- Out-of-sample: 2026-04-02 to 2026-08-10
+- In-sample: 2025-06-04 to 2026-04-02
+- Out-of-sample: 2026-04-03 to 2026-08-11
 
 ## In-sample results
 - Trades: 1
@@ -33,5 +33,5 @@ SCODATUBES   28                  21                 18                3         
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=1  mean=5.3%  median=5.3%  min=5.3%  max=5.3%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 

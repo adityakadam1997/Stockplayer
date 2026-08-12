@@ -162,7 +162,8 @@ def run_single_symbol_window(
 
 TIER_COMPARABLE = "comparable to current watchlist"
 TIER_MARGINAL = "marginal -- thin sample or borderline cost/risk"
-TIER_FAILS = "fails cost-viability or insufficient valid trades"
+TIER_FAILS = "fails cost-viability or negative expectancy"
+TIER_INSUFFICIENT_DATA = "insufficient data -- zero OOS trades, not tested"
 TIER_UNRESOLVED = "unresolved"
 
 MIN_TRADES_FOR_COMPARABLE = 5
@@ -176,10 +177,17 @@ def classify_tier(oos_stats: dict, oos_cost_risk: dict) -> str:
     rendering of this same text. The existing 15-symbol watchlist's known
     OOS cost/risk range (Cycle 3B) is roughly 6-18%; the two
     MAX_COST_RISK_PCT_* constants are set around that observed range, not
-    tuned per candidate."""
+    tuned per candidate.
+
+    Zero OOS trades is deliberately its own tier (TIER_INSUFFICIENT_DATA),
+    not folded into TIER_FAILS: a symbol whose strategy never fired isn't
+    evidence the strategy doesn't work on it -- it's the absence of
+    evidence either way (thin liquidity, a signal that just never set up
+    in the OOS window, etc.), which reads very differently from a symbol
+    that generated real trades and lost money or blew the cost bar."""
     trades = oos_stats["trades"]
     if trades == 0:
-        return TIER_FAILS
+        return TIER_INSUFFICIENT_DATA
 
     cost_risk_mean = oos_cost_risk["mean_pct"] if oos_cost_risk["n"] > 0 else 0.0
     if cost_risk_mean >= MAX_COST_RISK_PCT_BEFORE_FAIL:
@@ -304,11 +312,23 @@ def render_summary_md(rows: list[dict], unresolved: list[str]) -> str:
     """``rows`` -- one dict per resolved symbol, each with keys: symbol,
     oos_trades, oos_expectancy_r, oos_profit_factor, oos_cost_risk_avg_pct,
     coverage_label, tier. Ranked by ``oos_expectancy_r`` descending (symbols
-    with zero OOS trades, i.e. TIER_FAILS with no trades, sort last)."""
+    with zero OOS trades -- TIER_INSUFFICIENT_DATA, no evidence either way --
+    sort last, distinct from TIER_FAILS symbols that traded and lost)."""
     lines = ["# Candidate watchlist vetting -- SUMMARY", ""]
 
     lines.append("## Caveat")
     lines.append(STEP4_CAVEAT)
+    lines.append("")
+
+    lines.append("## Tier definitions")
+    lines.append(f"- **{TIER_COMPARABLE}**")
+    lines.append(f"- **{TIER_MARGINAL}**")
+    lines.append(f"- **{TIER_FAILS}** -- generated real OOS trades and either lost money, or the cost/risk ratio blew the viability bar.")
+    lines.append(
+        f"- **{TIER_INSUFFICIENT_DATA}** -- the strategy never fired in the OOS window for this symbol. "
+        "This is NOT the same as failing: an untested symbol has no evidence either way, whereas a "
+        f"'{TIER_FAILS}' symbol was tested and the evidence was negative."
+    )
     lines.append("")
 
     lines.append("## Resolved symbols, ranked by out-of-sample expectancy_R")

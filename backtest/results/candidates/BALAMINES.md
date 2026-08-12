@@ -1,19 +1,19 @@
 # BALAMINES -- candidate vetting report
 
 ## Data coverage
-2021-08-09 to 2026-08-10 (1241 trading days).
+2021-08-09 to 2026-08-11 (1242 trading days).
 
 ## IS/OOS split
-- In-sample: 2021-08-09 to 2025-02-09
-- Out-of-sample: 2025-02-10 to 2026-08-10
+- In-sample: 2021-08-09 to 2025-02-10
+- Out-of-sample: 2025-02-11 to 2026-08-11
 
 ## In-sample results
 - Trades: 14
 - Win rate: 35.7%
-- Expectancy: -0.144R
-- Profit factor: 0.78
-- Max drawdown: Rs-16,360
-- Avg holding days: 6.3
+- Expectancy: -0.172R
+- Profit factor: 0.75
+- Max drawdown: Rs-17,508
+- Avg holding days: 6.4
 
 ## Out-of-sample results
 - Trades: 5
@@ -33,5 +33,5 @@ BALAMINES  112                  86                 54               32          
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=5  mean=6.3%  median=5.7%  min=4.7%  max=9.6%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 

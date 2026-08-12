@@ -1,11 +1,11 @@
 # IDFCFIRSTB -- candidate vetting report
 
 ## Data coverage
-2021-08-09 to 2026-08-10 (1241 trading days).
+2021-08-09 to 2026-08-11 (1242 trading days).
 
 ## IS/OOS split
-- In-sample: 2021-08-09 to 2025-02-09
-- Out-of-sample: 2025-02-10 to 2026-08-10
+- In-sample: 2021-08-09 to 2025-02-10
+- Out-of-sample: 2025-02-11 to 2026-08-11
 
 ## In-sample results
 - Trades: 13
@@ -33,5 +33,5 @@ IDFCFIRSTB  116                  83                 43               40         
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=3  mean=8.0%  median=8.1%  min=6.3%  max=9.6%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 

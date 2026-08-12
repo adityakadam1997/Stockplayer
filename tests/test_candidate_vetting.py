@@ -169,8 +169,12 @@ def _cost_risk(mean_pct=0.0, n=1):
     return {"mean_pct": mean_pct, "n": n}
 
 
-def test_classify_tier_fails_with_zero_trades():
-    assert candidate_vetting.classify_tier(_stats(trades=0), _cost_risk(n=0)) == candidate_vetting.TIER_FAILS
+def test_classify_tier_is_insufficient_data_with_zero_trades():
+    # Zero OOS trades is "no evidence either way", not "tested and failed" --
+    # must be its own tier, distinct from TIER_FAILS.
+    tier = candidate_vetting.classify_tier(_stats(trades=0), _cost_risk(n=0))
+    assert tier == candidate_vetting.TIER_INSUFFICIENT_DATA
+    assert tier != candidate_vetting.TIER_FAILS
 
 
 def test_classify_tier_fails_when_cost_risk_too_high():
@@ -292,6 +296,15 @@ def test_render_summary_md_ranks_by_oos_expectancy_and_lists_unresolved():
             "coverage_label": "2021-01-01..2026-01-01",
             "tier": candidate_vetting.TIER_COMPARABLE,
         },
+        {
+            "symbol": "UNTESTED",
+            "oos_trades": 0,
+            "oos_expectancy_r": 0.0,
+            "oos_profit_factor": "n/a",
+            "oos_cost_risk_avg_pct": 0.0,
+            "coverage_label": "2025-01-01..2026-01-01 (LIMITED)",
+            "tier": candidate_vetting.TIER_INSUFFICIENT_DATA,
+        },
     ]
     md = candidate_vetting.render_summary_md(rows, ["FINELABS"])
 
@@ -300,9 +313,22 @@ def test_render_summary_md_ranks_by_oos_expectancy_and_lists_unresolved():
     assert "combined portfolio backtest" in md.lower() or "COMBINED portfolio backtest" in md
     strong_idx = md.index("STRONG")
     weak_idx = md.index("WEAK")
+    untested_idx = md.index("UNTESTED")
     assert strong_idx < weak_idx  # ranked by OOS expectancy_R descending
+    assert weak_idx < untested_idx  # zero-trade (no evidence) symbols sort last, distinct from tested-and-failed
+    assert candidate_vetting.TIER_INSUFFICIENT_DATA in md
     assert "FINELABS" in md
     assert "## Unresolved symbols" in md
+    assert "## Tier definitions" in md
+
+
+def test_render_summary_md_distinguishes_insufficient_data_from_fails():
+    # The core regression this fix targets: a zero-trade symbol's tier text
+    # must never equal a tested-and-failed symbol's tier text.
+    assert candidate_vetting.TIER_INSUFFICIENT_DATA != candidate_vetting.TIER_FAILS
+    md = candidate_vetting.render_summary_md([], [])
+    assert candidate_vetting.TIER_FAILS in md
+    assert candidate_vetting.TIER_INSUFFICIENT_DATA in md
 
 
 def test_render_summary_md_with_no_unresolved_symbols_says_so():

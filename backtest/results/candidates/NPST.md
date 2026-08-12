@@ -1,19 +1,19 @@
 # NPST -- candidate vetting report
 
 ## Data coverage
-2021-08-10 to 2026-08-10 (1109 trading days).
+2021-08-10 to 2026-08-11 (1110 trading days).
 
 ## IS/OOS split
-- In-sample: 2021-08-10 to 2025-02-09
-- Out-of-sample: 2025-02-10 to 2026-08-10
+- In-sample: 2021-08-10 to 2025-02-10
+- Out-of-sample: 2025-02-11 to 2026-08-11
 
 ## In-sample results
-- Trades: 5
+- Trades: 6
 - Win rate: 0.0%
-- Expectancy: -1.023R
+- Expectancy: -1.330R
 - Profit factor: 0.00
-- Max drawdown: Rs-9,937
-- Avg holding days: 2.4
+- Max drawdown: Rs-18,388
+- Avg holding days: 2.2
 
 ## Out-of-sample results
 - Trades: 5
@@ -33,5 +33,5 @@ symbol  raw  after_trend_filter  suppressed_shorts  after_long_only  invalid_geo
 ## Cost/risk ratio of executed trades (out-of-sample)
 n=5  mean=4.7%  median=4.5%  min=3.3%  max=6.1%  (existing 15-symbol watchlist's known Cycle 3B range: ~6-18%)
 
-## Tier: fails cost-viability or insufficient valid trades
+## Tier: fails cost-viability or negative expectancy
 
