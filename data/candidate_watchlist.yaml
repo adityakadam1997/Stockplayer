@@ -1,0 +1,64 @@
+# Candidate symbols for the watchlist-vetting pipeline (scripts/vet_candidates.py).
+#
+# This is a RESEARCH input only -- nothing here is read by the live paper
+# trading cron (config.yaml's `watchlist:` key is the only list that
+# matters for production). Already deduplicated against the live 15 at the
+# time this list was assembled.
+#
+# Designed to be appended to later: re-running the pipeline only processes
+# symbols that don't already have a report under
+# backtest/results/candidates/<SYMBOL>.md (skip-if-done; use --force to
+# reprocess everything).
+
+candidates:
+  - TANLA
+  - PPLPHARMA
+  - INDSWFTLAB
+  - RATNAVEER
+  - KPIGREEN
+  - IDEA
+  - JKTYRE
+  - NSDL
+  - SOLEX
+  - ZOTA
+  - SHAILY
+  - FINELABS
+  - NPST
+  - CREDITACC
+  - KPL
+  - DIXON
+  - CDSL
+  - GODFRYPHLP
+  - SCODATUBES
+  - BIRLANU
+  - COCHINSHIP
+  - SUNPHARMA
+  - THERMAX
+  - WEBELSOLAR
+  - HCLTECH
+  - BALAMINES
+  - MPSLTD
+  - SAFARI
+  - ERIS
+  - TATAINVEST
+  - BEML
+  - DRREDDY
+  - PIRAMALFIN
+  - LLOYDSENT
+  - LLOYDSENGG
+  - REDINGTON
+  - MGL
+  - IIFL
+  - NMDC
+  - IRCTC
+  - RAILTEL
+  - HINDALCO
+  - IONEXCHANG
+  - DIAMONDYD
+  - HIRECT
+  - VOLTAS
+  - PARAGMILK
+  - TMCV
+  - EIMCOELECO
+  - OLAELEC
+  - IDFCFIRSTB

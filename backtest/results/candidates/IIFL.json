@@ -1,0 +1,9 @@
+{
+  "symbol": "IIFL",
+  "oos_trades": 4,
+  "oos_expectancy_r": -0.08601958830612172,
+  "oos_profit_factor": 0.7868205303719925,
+  "oos_cost_risk_avg_pct": 5.043138841487411,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "marginal -- thin sample or borderline cost/risk"
+}

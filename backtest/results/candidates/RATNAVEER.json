@@ -1,0 +1,9 @@
+{
+  "symbol": "RATNAVEER",
+  "oos_trades": 3,
+  "oos_expectancy_r": -1.0684949568145619,
+  "oos_profit_factor": 0.0,
+  "oos_cost_risk_avg_pct": 5.297544472175746,
+  "coverage_label": "2023-09-11..2026-08-11 (LIMITED)",
+  "tier": "fails cost-viability or negative expectancy"
+}

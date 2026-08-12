@@ -1,6 +1,7 @@
 cache/*
 !cache/.gitkeep
-backtest/results/
+backtest/results/*
+!backtest/results/candidates/
 backtest/results_swing/
 .env
 *.parquet

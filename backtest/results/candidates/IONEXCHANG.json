@@ -1,0 +1,9 @@
+{
+  "symbol": "IONEXCHANG",
+  "oos_trades": 1,
+  "oos_expectancy_r": -1.078117678075436,
+  "oos_profit_factor": 0.0,
+  "oos_cost_risk_avg_pct": 5.251563725910922,
+  "coverage_label": "2022-02-22..2026-08-11 (LIMITED)",
+  "tier": "fails cost-viability or negative expectancy"
+}
