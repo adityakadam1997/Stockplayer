@@ -26,14 +26,16 @@ Resolution order, per the pipeline spec:
 4. Anything still unresolved after all three steps is reported by name as
    UNRESOLVED (see ``resolve_candidates``'s return value) -- never guessed.
 
-**50 of 51 candidates resolved and verified.** FINELABS is UNRESOLVED: no
-NSE-listed company trading under this exact symbol could be found across
-two independent research passes (nseindia.com search, general web search) --
-reported as UNRESOLVED rather than guessed, per the pipeline's spec.
+**Batch 1 (51 candidates): 50 resolved and verified.** FINELABS is
+UNRESOLVED: no NSE-listed company trading under this exact symbol could be
+found across two independent research passes (nseindia.com search, general
+web search) -- reported as UNRESOLVED rather than guessed, per the
+pipeline's spec.
 
-Two symbols needed correction/disambiguation during live verification
-(the spec's "verify EACH ONE" step earning its keep -- a plausible-looking,
-multi-source-agreed ISIN still turned out wrong in one case):
+Two batch-1 symbols needed correction/disambiguation during live
+verification (the spec's "verify EACH ONE" step earning its keep -- a
+plausible-looking, multi-source-agreed ISIN still turned out wrong in one
+case):
 
 - **NSDL**: ``NSE_EQ|INE301O01023`` returned "Invalid Instrument key" even
   though INE301O01023 is the correct ISIN (confirmed by Wikipedia, Upstox's
@@ -51,6 +53,16 @@ multi-source-agreed ISIN still turned out wrong in one case):
   data in Tata Investment Corporation's expected price band (~Rs670-715)
   consistent with its known market cap. Used as ``NSE_EQ|INE672A01026``
   here.
+
+**Batch 2 (38 candidates, Nifty/blue-chip class): all 38 resolved and
+verified.** One symbol needed the same kind of correction as TATAINVEST:
+
+- **NESTLEIND**: the first ISIN found (INE239A01016, from stockanalysis.com/
+  screener.in) returned "Invalid Instrument key" against the live API.
+  A second source (investonline.in, which embeds the ISIN directly in its
+  URL) gave INE239A01024 (again, only the last two digits differ) --
+  verified live, returns real OHLC data in Nestle India's expected price
+  band (~Rs1490-1550). Used as ``NSE_EQ|INE239A01024`` here.
 """
 
 from __future__ import annotations
@@ -116,6 +128,45 @@ CANDIDATE_VERIFIED_INSTRUMENT_KEYS: dict[str, str] = {
     "EIMCOELECO": "NSE_EQ|INE158B01016",
     "OLAELEC": "NSE_EQ|INE0LXG01040",
     "IDFCFIRSTB": "NSE_EQ|INE092T01019",
+    # -- Batch 2 (Nifty/blue-chip class) --
+    "ADANIENT": "NSE_EQ|INE423A01024",
+    "ADANIPORTS": "NSE_EQ|INE742F01042",
+    "ONGC": "NSE_EQ|INE213A01029",
+    "NTPC": "NSE_EQ|INE733E01010",
+    "POWERGRID": "NSE_EQ|INE752E01010",
+    "ULTRACEMCO": "NSE_EQ|INE481G01011",
+    "ASIANPAINT": "NSE_EQ|INE021A01026",
+    "NESTLEIND": "NSE_EQ|INE239A01024",  # corrected ISIN -- see module docstring
+    "WIPRO": "NSE_EQ|INE075A01022",
+    "TITAN": "NSE_EQ|INE280A01028",
+    "BAJAJFINSV": "NSE_EQ|INE918I01026",
+    "BAJAJ-AUTO": "NSE_EQ|INE917I01010",
+    "CIPLA": "NSE_EQ|INE059A01026",
+    "DIVISLAB": "NSE_EQ|INE361B01024",
+    "EICHERMOT": "NSE_EQ|INE066A01021",
+    "GRASIM": "NSE_EQ|INE047A01021",
+    "HEROMOTOCO": "NSE_EQ|INE158A01026",
+    "INDUSINDBK": "NSE_EQ|INE095A01012",
+    "ITC": "NSE_EQ|INE154A01025",
+    "JSWSTEEL": "NSE_EQ|INE019A01038",
+    "M&M": "NSE_EQ|INE101A01026",
+    "SBILIFE": "NSE_EQ|INE123W01016",
+    "SHREECEM": "NSE_EQ|INE070A01015",
+    "TATACONSUM": "NSE_EQ|INE192A01025",
+    "TECHM": "NSE_EQ|INE669C01036",
+    "UPL": "NSE_EQ|INE628A01036",
+    "VEDL": "NSE_EQ|INE205A01025",
+    "APOLLOHOSP": "NSE_EQ|INE437A01024",
+    "BPCL": "NSE_EQ|INE029A01011",
+    "BRITANNIA": "NSE_EQ|INE216A01030",
+    "COALINDIA": "NSE_EQ|INE522F01014",
+    "HDFCLIFE": "NSE_EQ|INE795G01014",
+    "ICICIPRULI": "NSE_EQ|INE726G01019",
+    "LTIM": "NSE_EQ|INE214T01019",
+    "PIDILITIND": "NSE_EQ|INE318A01026",
+    "SIEMENS": "NSE_EQ|INE003A01024",
+    "DABUR": "NSE_EQ|INE016A01026",
+    "GAIL": "NSE_EQ|INE129A01019",
 }
 
 # Every candidate confirmed UNRESOLVED after all three resolution steps --

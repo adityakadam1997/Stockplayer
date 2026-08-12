@@ -1,0 +1,9 @@
+{
+  "symbol": "ASIANPAINT",
+  "oos_trades": 1,
+  "oos_expectancy_r": -0.43628632959920466,
+  "oos_profit_factor": 0.0,
+  "oos_cost_risk_avg_pct": 8.659223071562751,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "fails cost-viability or negative expectancy"
+}

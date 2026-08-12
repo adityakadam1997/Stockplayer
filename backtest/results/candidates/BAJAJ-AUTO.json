@@ -1,0 +1,9 @@
+{
+  "symbol": "BAJAJ-AUTO",
+  "oos_trades": 4,
+  "oos_expectancy_r": 0.6232238181628916,
+  "oos_profit_factor": 2.962071008156045,
+  "oos_cost_risk_avg_pct": 9.462251843805868,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "marginal -- thin sample or borderline cost/risk"
+}

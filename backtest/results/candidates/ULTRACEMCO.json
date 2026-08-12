@@ -1,0 +1,9 @@
+{
+  "symbol": "ULTRACEMCO",
+  "oos_trades": 4,
+  "oos_expectancy_r": 0.09991849118779372,
+  "oos_profit_factor": 1.1463549914521702,
+  "oos_cost_risk_avg_pct": 8.924723132340134,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "marginal -- thin sample or borderline cost/risk"
+}

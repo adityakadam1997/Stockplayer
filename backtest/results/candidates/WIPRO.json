@@ -1,0 +1,9 @@
+{
+  "symbol": "WIPRO",
+  "oos_trades": 2,
+  "oos_expectancy_r": 0.6518168416400062,
+  "oos_profit_factor": "inf",
+  "oos_cost_risk_avg_pct": 9.784849144111021,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "marginal -- thin sample or borderline cost/risk"
+}
