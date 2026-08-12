@@ -62,3 +62,43 @@ candidates:
   - EIMCOELECO
   - OLAELEC
   - IDFCFIRSTB
+  # Batch 2 -- appended after the first 51 were vetted (PR #18). Also
+  # deduplicated against the live 15 and the batch-1 candidates above.
+  - ADANIENT
+  - ADANIPORTS
+  - ONGC
+  - NTPC
+  - POWERGRID
+  - ULTRACEMCO
+  - ASIANPAINT
+  - NESTLEIND
+  - WIPRO
+  - TITAN
+  - BAJAJFINSV
+  - BAJAJ-AUTO
+  - CIPLA
+  - DIVISLAB
+  - EICHERMOT
+  - GRASIM
+  - HEROMOTOCO
+  - INDUSINDBK
+  - ITC
+  - JSWSTEEL
+  - M&M
+  - SBILIFE
+  - SHREECEM
+  - TATACONSUM
+  - TECHM
+  - UPL
+  - VEDL
+  - APOLLOHOSP
+  - BPCL
+  - BRITANNIA
+  - COALINDIA
+  - HDFCLIFE
+  - ICICIPRULI
+  - LTIM
+  - PIDILITIND
+  - SIEMENS
+  - DABUR
+  - GAIL

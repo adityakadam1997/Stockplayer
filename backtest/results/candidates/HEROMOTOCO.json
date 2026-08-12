@@ -1,0 +1,9 @@
+{
+  "symbol": "HEROMOTOCO",
+  "oos_trades": 1,
+  "oos_expectancy_r": -1.4752801506255862,
+  "oos_profit_factor": 0.0,
+  "oos_cost_risk_avg_pct": 8.071075772753288,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "fails cost-viability or negative expectancy"
+}

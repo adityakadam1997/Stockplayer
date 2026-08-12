@@ -39,10 +39,12 @@ def _candidates() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def test_watchlist_has_51_deduplicated_candidates():
+def test_watchlist_has_no_duplicate_candidates():
+    # Deliberately not hardcoded to a specific count -- the list is designed
+    # to be appended to in later batches (see the file's own header comment).
     candidates = _candidates()
-    assert len(candidates) == 51
-    assert len(set(candidates)) == 51
+    assert len(candidates) == len(set(candidates))
+    assert len(candidates) >= 89  # batch 1 (51) + batch 2 (38)
 
 
 def test_resolve_candidates_uses_hardcoded_map_when_bulk_source_fails(tmp_path, monkeypatch):
@@ -74,12 +76,13 @@ def test_resolve_candidates_reports_unresolved_by_name_never_guesses(tmp_path, m
     assert "FINELABS" not in resolved
 
 
-def test_50_of_51_candidates_are_in_the_verified_fallback_map():
-    # FINELABS is the one documented UNRESOLVED symbol -- see the module
-    # docstring. Every other candidate must have a verified key.
+def test_candidates_missing_from_verified_map_match_documented_unresolved():
+    # Every candidate not in the verified map must be explicitly documented
+    # as UNRESOLVED (module docstring / DOCUMENTED_UNRESOLVED) -- never a
+    # silent gap that just never got resolved.
     candidates = _candidates()
-    missing = [s for s in candidates if s not in candidate_instrument_keys.CANDIDATE_VERIFIED_INSTRUMENT_KEYS]
-    assert missing == ["FINELABS"], f"unexpected unresolved set: {missing}"
+    missing = {s for s in candidates if s not in candidate_instrument_keys.CANDIDATE_VERIFIED_INSTRUMENT_KEYS}
+    assert missing == candidate_instrument_keys.DOCUMENTED_UNRESOLVED, f"unexpected unresolved set: {missing}"
 
 
 def test_verified_keys_are_well_formed_instrument_keys():

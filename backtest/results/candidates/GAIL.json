@@ -1,0 +1,9 @@
+{
+  "symbol": "GAIL",
+  "oos_trades": 4,
+  "oos_expectancy_r": -0.14941337172618718,
+  "oos_profit_factor": 0.821367789085252,
+  "oos_cost_risk_avg_pct": 7.231320469007671,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "fails cost-viability or negative expectancy"
+}

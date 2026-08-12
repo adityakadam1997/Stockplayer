@@ -1,0 +1,9 @@
+{
+  "symbol": "LTIM",
+  "oos_trades": 4,
+  "oos_expectancy_r": -0.07873957765670889,
+  "oos_profit_factor": 0.8263789185371666,
+  "oos_cost_risk_avg_pct": 6.982723040483813,
+  "coverage_label": "2021-08-09..2026-08-11",
+  "tier": "marginal -- thin sample or borderline cost/risk"
+}
