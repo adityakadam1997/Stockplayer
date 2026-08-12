@@ -118,6 +118,13 @@ CANDIDATE_VERIFIED_INSTRUMENT_KEYS: dict[str, str] = {
     "IDFCFIRSTB": "NSE_EQ|INE092T01019",
 }
 
+# Every candidate confirmed UNRESOLVED after all three resolution steps --
+# kept as an explicit set (not just "whatever's missing from the map above")
+# so a symbol silently missing from CANDIDATE_VERIFIED_INSTRUMENT_KEYS by
+# accident (a future batch that never got its research/verification pass)
+# fails loudly instead of being mistaken for a deliberate UNRESOLVED call.
+DOCUMENTED_UNRESOLVED: set[str] = {"FINELABS"}
+
 
 def resolve_candidates(
     candidates: list[str], cache_dir: Path, force_refresh: bool = False
