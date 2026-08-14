@@ -1,27 +1,10 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-08-12",
-  "last_weekly_summary_date": "2026-08-13",
-  "open_positions": {
-    "MARUTI": {
-      "acceptance_streak_at_entry": 2,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_fill": 13943.1817,
-      "entry_price": 13948.0,
-      "entry_timestamp": "2026-07-30T00:00:00+05:30",
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "quantity": 7,
-      "rr_ratio": 1.6666666666666667,
-      "setup_id": "setup1_discovery",
-      "stop_price": 13558.0,
-      "symbol": "MARUTI",
-      "target_price": 14598.0,
-      "timestamp": "2026-07-29T00:00:00+05:30"
-    }
-  },
+  "last_processed_date": "2026-08-13",
+  "last_weekly_summary_date": "2026-08-14",
+  "open_positions": {},
   "paper_start_date": "2026-07-17",
   "pending_orders": {},
-  "realized_pnl": 1595.0740974874623,
-  "trade_count": 1
+  "realized_pnl": 1057.7485692400232,
+  "trade_count": 2
 }
