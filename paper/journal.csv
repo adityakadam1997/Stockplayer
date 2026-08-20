@@ -91,3 +91,7 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-08-14,RELIANCE,2026-08-14T00:00:00+05:30,setup1_discovery,short,1310.0,1318.1587499999998,1307.2,0.3431898268729908,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-08-14,TATAMOTORS,2026-08-14T00:00:00+05:30,setup2_fade,long,334.5,328.8355,340.1629814047105,0.9997319100910059,wide_band_guard,"fade rejection at band_lower_1, target=vwap"
 2026-08-14,TCS,2026-08-14T00:00:00+05:30,setup3_return,long,2361.0,2332.2333000000003,2383.3419009283884,0.7766584602470459,failed_trend_filter,"primary: retest of the broken band from inside, holds, toward vwap"
+2026-08-19,HDFCBANK,2026-08-19T00:00:00+05:30,setup1_discovery,short,720.0,725.7626999999999,723.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-08-19,LT,2026-08-19T00:00:00+05:30,setup1_discovery,short,4041.3,4071.0344999999998,4050.0,0.0,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-08-19,MARUTI,2026-08-19T00:00:00+05:30,setup1_discovery,short,13690.0,13751.8725,13691.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-08-19,SBIN,2026-08-19T00:00:00+05:30,setup1_discovery,short,1048.6,1055.3274,1053.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
