@@ -95,3 +95,7 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-08-19,LT,2026-08-19T00:00:00+05:30,setup1_discovery,short,4041.3,4071.0344999999998,4050.0,0.0,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-08-19,MARUTI,2026-08-19T00:00:00+05:30,setup1_discovery,short,13690.0,13751.8725,13691.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-08-19,SBIN,2026-08-19T00:00:00+05:30,setup1_discovery,short,1048.6,1055.3274,1053.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-08-20,AXISBANK,2026-08-20T00:00:00+05:30,setup4_bounce,long,1251.0,1235.5819000000001,1243.8071230709147,0.0,invalid_geometry,"bounce off vwap after touch, target=1st deviation band"
+2026-08-20,AXISBANK,2026-08-20T00:00:00+05:30,setup1_discovery,long,1251.0,1219.725,1272.0,0.6714628297362091,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
+2026-08-20,SBIN,2026-08-20T00:00:00+05:30,setup1_discovery,short,1048.0,1053.42645,1041.4,1.2162647771563346,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-08-20,TATAMOTORS,2026-08-20T00:00:00+05:30,setup1_discovery,short,320.25,324.712275,320.2,0.011205046753060183,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
