@@ -130,3 +130,7 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-08-28,TATAMOTORS,2026-08-28T00:00:00+05:30,setup3_return,long,319.4,313.14335000000005,315.1842692128143,0.0,failed_trend_filter,"primary: retest of the broken band from inside, holds, toward vwap"
 2026-08-28,TATASTEEL,2026-08-28T00:00:00+05:30,setup3_return,short,186.5,188.88439499999998,186.6143951634723,0.0,suppressed_short,"primary: retest of the broken band from inside, holds, toward vwap"
 2026-08-28,TCS,2026-08-28T00:00:00+05:30,setup1_discovery,long,2342.0,2262.1683500000004,2313.5,0.0,failed_trend_filter,"retest of band_upper_1 after accepted_above, target=session extreme high"
+2026-09-02,LT,2026-09-02T00:00:00+05:30,setup1_discovery,short,3981.0,4004.30115,3980.1,0.038624703072599395,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-09-02,MARUTI,2026-09-02T00:00:00+05:30,setup1_discovery,short,12849.0,12894.444,12851.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-09-02,RELIANCE,2026-09-02T00:00:00+05:30,setup1_discovery,long,1313.1,1269.8999999999996,1337.0,0.5532407407407394,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
+2026-09-02,SBIN,2026-09-02T00:00:00+05:30,setup1_discovery,short,1020.9,1035.81765,1027.1,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
