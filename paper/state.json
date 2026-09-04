@@ -1,10 +1,24 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-09-02",
-  "last_weekly_summary_date": "2026-09-03",
+  "last_processed_date": "2026-09-03",
+  "last_weekly_summary_date": "2026-09-04",
   "open_positions": {},
   "paper_start_date": "2026-07-17",
-  "pending_orders": {},
+  "pending_orders": {
+    "BHARTIARTL": {
+      "acceptance_streak_at_entry": 1,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_price": 1869.0,
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "rr_ratio": 2.927768860353135,
+      "setup_id": "setup1_discovery",
+      "stop_price": 1822.275,
+      "symbol": "BHARTIARTL",
+      "target_price": 2005.8,
+      "timestamp": "2026-09-03T00:00:00+05:30"
+    }
+  },
   "realized_pnl": 1057.7485692400232,
   "trade_count": 2
 }
