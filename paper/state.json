@@ -1,7 +1,7 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-09-07",
-  "last_weekly_summary_date": "2026-09-08",
+  "last_processed_date": "2026-09-08",
+  "last_weekly_summary_date": "2026-09-09",
   "open_positions": {
     "BHARTIARTL": {
       "acceptance_streak_at_entry": 1,
