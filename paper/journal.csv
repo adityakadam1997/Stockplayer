@@ -194,3 +194,7 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-09-18,SBIN,2026-09-18T00:00:00+05:30,setup1_discovery,long,996.2,984.6074500000001,991.4,0.0,failed_trend_filter,"retest of band_upper_1 after accepted_above, target=session extreme high"
 2026-09-18,SBIN,2026-09-18T00:00:00+05:30,setup4_bounce,long,996.2,984.6074500000001,991.8473581854391,0.0,failed_trend_filter,"bounce off vwap after touch, target=1st deviation band"
 2026-09-18,TCS,2026-09-18T00:00:00+05:30,setup1_discovery,short,2105.0,2178.38865,2162.5,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-09-23,AXISBANK,2026-09-23T00:00:00+05:30,setup1_discovery,short,1243.2,1252.626,1240.1,0.3288775726713515,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-09-23,KOTAKBANK,2026-09-23T00:00:00+05:30,setup1_discovery,short,413.25,417.458625,412.55,0.1663251061807577,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-09-23,TATASTEEL,2026-09-23T00:00:00+05:30,setup1_discovery,long,190.82,180.875,191.67119369988941,0.08559011562487903,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
+2026-09-23,TCS,2026-09-23T00:00:00+05:30,setup1_discovery,short,2089.6,2105.2520999999997,2098.2,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
