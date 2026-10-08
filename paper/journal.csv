@@ -231,3 +231,7 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-10-01,MARUTI,2026-10-01T00:00:00+05:30,setup1_discovery,short,11386.0,11912.9535,11831.0,0.0,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-10-01,SBIN,2026-10-01T00:00:00+05:30,setup1_discovery,short,954.1,965.8826999999999,959.5,0.0,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-10-01,TATASTEEL,2026-10-01T00:00:00+05:30,setup1_discovery,short,178.0,186.643275,184.3,0.0,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-10-07,BAJFINANCE,2026-10-07T00:00:00+05:30,setup1_discovery,short,963.85,984.8921999999999,957.0,0.3255363032382577,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-10-07,INFY,2026-10-07T00:00:00+05:30,setup1_discovery,short,992.0,1009.5044999999999,1003.15,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-10-07,TATASTEEL,2026-10-07T00:00:00+05:30,setup1_discovery,short,175.64,178.339125,177.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-10-07,TCS,2026-10-07T00:00:00+05:30,setup1_discovery,short,2080.3,2106.0525,2082.7,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
