@@ -244,3 +244,6 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-10-08,TATAMOTORS,2026-10-08T00:00:00+05:30,setup1_discovery,short,273.0,284.49217500000003,280.8,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-10-08,TATASTEEL,2026-10-08T00:00:00+05:30,setup1_discovery,short,171.96,176.4882,174.6,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-10-08,TCS,2026-10-08T00:00:00+05:30,setup1_discovery,short,2076.0,2142.57075,2076.0,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-10-09,ICICIBANK,2026-10-09T00:00:00+05:30,setup4_bounce,long,1355.0,1341.62885,1352.1399441245082,0.0,wide_band_guard,"bounce off vwap after touch, target=1st deviation band"
+2026-10-09,ICICIBANK,2026-10-09T00:00:00+05:30,setup1_discovery,long,1355.0,1321.125,1402.5,1.4022140221402215,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
+2026-10-09,KOTAKBANK,2026-10-09T00:00:00+05:30,setup1_discovery,long,441.0,429.90000000000003,441.5,0.04504504504504518,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
