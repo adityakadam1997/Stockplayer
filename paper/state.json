@@ -1,22 +1,65 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-10-14",
-  "last_weekly_summary_date": "2026-10-15",
-  "open_positions": {},
-  "paper_start_date": "2026-07-17",
-  "pending_orders": {
+  "last_processed_date": "2026-10-15",
+  "last_weekly_summary_date": "2026-10-16",
+  "open_positions": {
     "SBIN": {
       "acceptance_streak_at_entry": 2,
       "condition_at_entry": "accepted_above",
       "direction": "long",
+      "entry_fill": 955.68662,
       "entry_price": 954.9,
+      "entry_timestamp": "2026-10-15T00:00:00+05:30",
       "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "quantity": 125,
       "rr_ratio": 1.926903340663939,
       "setup_id": "setup1_discovery",
       "stop_price": 931.0274999999999,
       "symbol": "SBIN",
       "target_price": 1000.9,
       "timestamp": "2026-10-14T00:00:00+05:30"
+    }
+  },
+  "paper_start_date": "2026-07-17",
+  "pending_orders": {
+    "SBIN": {
+      "acceptance_streak_at_entry": 3,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_price": 960.0,
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "rr_ratio": 1.657548125633234,
+      "setup_id": "setup1_discovery",
+      "stop_price": 935.325,
+      "symbol": "SBIN",
+      "target_price": 1000.9,
+      "timestamp": "2026-10-15T00:00:00+05:30"
+    },
+    "TATAMOTORS": {
+      "acceptance_streak_at_entry": 1,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_price": 287.05,
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "rr_ratio": 3.0751173708920416,
+      "setup_id": "setup1_discovery",
+      "stop_price": 276.4000000000001,
+      "symbol": "TATAMOTORS",
+      "target_price": 319.8,
+      "timestamp": "2026-10-15T00:00:00+05:30"
+    },
+    "TATASTEEL": {
+      "acceptance_streak_at_entry": 3,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_price": 176.4,
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "rr_ratio": 2.438638163103712,
+      "setup_id": "setup1_discovery",
+      "stop_price": 170.08499999999998,
+      "symbol": "TATASTEEL",
+      "target_price": 191.8,
+      "timestamp": "2026-10-15T00:00:00+05:30"
     }
   },
   "realized_pnl": -2232.9670390280457,
