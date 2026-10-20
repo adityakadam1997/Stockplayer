@@ -1,8 +1,40 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-10-16",
+  "last_processed_date": "2026-10-19",
   "last_weekly_summary_date": "2026-10-20",
   "open_positions": {
+    "BAJFINANCE": {
+      "acceptance_streak_at_entry": 1,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_fill": 985.2955,
+      "entry_price": 982.1,
+      "entry_timestamp": "2026-10-19T00:00:00+05:30",
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "quantity": 84,
+      "rr_ratio": 1.7259887005649734,
+      "setup_id": "setup1_discovery",
+      "stop_price": 946.7,
+      "symbol": "BAJFINANCE",
+      "target_price": 1043.2,
+      "timestamp": "2026-10-16T00:00:00+05:30"
+    },
+    "MARUTI": {
+      "acceptance_streak_at_entry": 2,
+      "condition_at_entry": "accepted_above",
+      "direction": "long",
+      "entry_fill": 11513.453,
+      "entry_price": 11489.0,
+      "entry_timestamp": "2026-10-19T00:00:00+05:30",
+      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
+      "quantity": 8,
+      "rr_ratio": 2.8209606986899565,
+      "setup_id": "setup1_discovery",
+      "stop_price": 11145.5,
+      "symbol": "MARUTI",
+      "target_price": 12458.0,
+      "timestamp": "2026-10-16T00:00:00+05:30"
+    },
     "SBIN": {
       "acceptance_streak_at_entry": 2,
       "condition_at_entry": "accepted_above",
@@ -53,60 +85,7 @@
     }
   },
   "paper_start_date": "2026-07-17",
-  "pending_orders": {
-    "BAJFINANCE": {
-      "acceptance_streak_at_entry": 1,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_price": 982.1,
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "rr_ratio": 1.7259887005649734,
-      "setup_id": "setup1_discovery",
-      "stop_price": 946.7,
-      "symbol": "BAJFINANCE",
-      "target_price": 1043.2,
-      "timestamp": "2026-10-16T00:00:00+05:30"
-    },
-    "MARUTI": {
-      "acceptance_streak_at_entry": 2,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_price": 11489.0,
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "rr_ratio": 2.8209606986899565,
-      "setup_id": "setup1_discovery",
-      "stop_price": 11145.5,
-      "symbol": "MARUTI",
-      "target_price": 12458.0,
-      "timestamp": "2026-10-16T00:00:00+05:30"
-    },
-    "SBIN": {
-      "acceptance_streak_at_entry": 4,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_price": 962.6,
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "rr_ratio": 1.5915229586536408,
-      "setup_id": "setup1_discovery",
-      "stop_price": 938.535,
-      "symbol": "SBIN",
-      "target_price": 1000.9,
-      "timestamp": "2026-10-16T00:00:00+05:30"
-    },
-    "TATAMOTORS": {
-      "acceptance_streak_at_entry": 2,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_price": 286.85,
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "rr_ratio": 4.594735924699328,
-      "setup_id": "setup1_discovery",
-      "stop_price": 279.67875000000004,
-      "symbol": "TATAMOTORS",
-      "target_price": 319.8,
-      "timestamp": "2026-10-16T00:00:00+05:30"
-    }
-  },
+  "pending_orders": {},
   "realized_pnl": -2232.9670390280457,
   "trade_count": 3
 }
