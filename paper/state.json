@@ -1,24 +1,8 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-10-19",
-  "last_weekly_summary_date": "2026-10-20",
+  "last_processed_date": "2026-10-21",
+  "last_weekly_summary_date": "2026-10-22",
   "open_positions": {
-    "BAJFINANCE": {
-      "acceptance_streak_at_entry": 1,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_fill": 985.2955,
-      "entry_price": 982.1,
-      "entry_timestamp": "2026-10-19T00:00:00+05:30",
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "quantity": 84,
-      "rr_ratio": 1.7259887005649734,
-      "setup_id": "setup1_discovery",
-      "stop_price": 946.7,
-      "symbol": "BAJFINANCE",
-      "target_price": 1043.2,
-      "timestamp": "2026-10-16T00:00:00+05:30"
-    },
     "MARUTI": {
       "acceptance_streak_at_entry": 2,
       "condition_at_entry": "accepted_above",
@@ -51,22 +35,6 @@
       "target_price": 1000.9,
       "timestamp": "2026-10-14T00:00:00+05:30"
     },
-    "TATAMOTORS": {
-      "acceptance_streak_at_entry": 1,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_fill": 287.136115,
-      "entry_price": 287.05,
-      "entry_timestamp": "2026-10-16T00:00:00+05:30",
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "quantity": 281,
-      "rr_ratio": 3.0751173708920416,
-      "setup_id": "setup1_discovery",
-      "stop_price": 276.4000000000001,
-      "symbol": "TATAMOTORS",
-      "target_price": 319.8,
-      "timestamp": "2026-10-15T00:00:00+05:30"
-    },
     "TATASTEEL": {
       "acceptance_streak_at_entry": 3,
       "condition_at_entry": "accepted_above",
@@ -86,6 +54,6 @@
   },
   "paper_start_date": "2026-07-17",
   "pending_orders": {},
-  "realized_pnl": -2232.9670390280457,
-  "trade_count": 3
+  "realized_pnl": -8943.979422815377,
+  "trade_count": 5
 }
