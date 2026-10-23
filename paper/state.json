@@ -1,24 +1,8 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-10-21",
-  "last_weekly_summary_date": "2026-10-22",
+  "last_processed_date": "2026-10-22",
+  "last_weekly_summary_date": "2026-10-23",
   "open_positions": {
-    "MARUTI": {
-      "acceptance_streak_at_entry": 2,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_fill": 11513.453,
-      "entry_price": 11489.0,
-      "entry_timestamp": "2026-10-19T00:00:00+05:30",
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "quantity": 8,
-      "rr_ratio": 2.8209606986899565,
-      "setup_id": "setup1_discovery",
-      "stop_price": 11145.5,
-      "symbol": "MARUTI",
-      "target_price": 12458.0,
-      "timestamp": "2026-10-16T00:00:00+05:30"
-    },
     "SBIN": {
       "acceptance_streak_at_entry": 2,
       "condition_at_entry": "accepted_above",
@@ -34,26 +18,10 @@
       "symbol": "SBIN",
       "target_price": 1000.9,
       "timestamp": "2026-10-14T00:00:00+05:30"
-    },
-    "TATASTEEL": {
-      "acceptance_streak_at_entry": 3,
-      "condition_at_entry": "accepted_above",
-      "direction": "long",
-      "entry_fill": 176.65297999999999,
-      "entry_price": 176.4,
-      "entry_timestamp": "2026-10-16T00:00:00+05:30",
-      "notes": "retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied",
-      "quantity": 475,
-      "rr_ratio": 2.438638163103712,
-      "setup_id": "setup1_discovery",
-      "stop_price": 170.08499999999998,
-      "symbol": "TATASTEEL",
-      "target_price": 191.8,
-      "timestamp": "2026-10-15T00:00:00+05:30"
     }
   },
   "paper_start_date": "2026-07-17",
   "pending_orders": {},
-  "realized_pnl": -8943.979422815377,
-  "trade_count": 5
+  "realized_pnl": -15491.578346101638,
+  "trade_count": 7
 }
