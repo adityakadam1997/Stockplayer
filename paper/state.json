@@ -1,7 +1,7 @@
 {
   "capital": 300000.0,
-  "last_processed_date": "2026-10-27",
-  "last_weekly_summary_date": "2026-10-28",
+  "last_processed_date": "2026-10-28",
+  "last_weekly_summary_date": "2026-10-30",
   "open_positions": {
     "SBIN": {
       "acceptance_streak_at_entry": 2,

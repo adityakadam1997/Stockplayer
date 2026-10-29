@@ -297,3 +297,6 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-10-23,TATAMOTORS,2026-10-23T00:00:00+05:30,setup1_discovery,short,264.6,270.685275,267.85,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-10-23,TATASTEEL,2026-10-23T00:00:00+05:30,setup1_discovery,short,167.67,171.43567499999997,170.6,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
 2026-10-23,TCS,2026-10-23T00:00:00+05:30,setup4_bounce,long,2530.0,2515.9414,2543.574605638406,0.9655730754418014,wide_band_guard,"bounce off vwap after touch, target=1st deviation band"
+2026-10-28,HINDUNILVR,2026-10-28T00:00:00+05:30,setup1_discovery,long,1815.8,1764.61725,1818.0,0.04298323165519727,failed_trend_filter,"retest of band_upper_1 after accepted_above, target=session extreme high"
+2026-10-28,ICICIBANK,2026-10-28T00:00:00+05:30,setup1_discovery,short,1377.6,1382.59095,1377.6,0.0,failed_trend_filter,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-10-28,MARUTI,2026-10-28T00:00:00+05:30,setup1_discovery,long,11579.0,11030.0,12116.0,0.9781420765027322,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
