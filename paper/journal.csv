@@ -343,3 +343,5 @@ run_date,symbol,signal_timestamp,setup_id,direction,entry_price,stop_price,targe
 2026-11-12,BAJFINANCE,2026-11-12T00:00:00+05:30,setup1_discovery,long,1115.0,1076.0617,1090.0,0.0,invalid_geometry,"retest of band_upper_1 after accepted_above, target=session extreme high"
 2026-11-12,KOTAKBANK,2026-11-12T00:00:00+05:30,setup1_discovery,long,490.4,475.85,491.05,0.04467353951890283,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
 2026-11-12,TCS,2026-11-12T00:00:00+05:30,setup1_discovery,short,2442.4,2473.236,2442.0,0.012971851083152606,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
+2026-11-13,BAJFINANCE,2026-11-13T00:00:00+05:30,setup1_discovery,long,1117.0,1071.7749999999999,1118.0,0.022111663902708613,failed_rr,"retest of band_upper_1 after accepted_above, target=session extreme high | target_recomputed_at_signal | stop_floor_applied"
+2026-11-13,TCS,2026-11-13T00:00:00+05:30,setup1_discovery,short,2407.5,2451.52515,2422.5,0.0,suppressed_short,"retest of band_lower_1 after accepted_below, target=session extreme low"
